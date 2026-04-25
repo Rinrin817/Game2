@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 using System.Linq;
-using System.Data.Common;
 using UnityEngine.AI;
-using System.Runtime.CompilerServices;
 
 public class EnemyPlayerController : MonoBehaviour
 {
@@ -32,6 +30,7 @@ public class EnemyPlayerController : MonoBehaviour
     public string[] pushedKey;
     public enum myState {Idle, Steal, Goal, Chasing, Escape, Mission, Rescue};
     public myState _state = myState.Idle;
+    public GameObject targetObj;
     CameraController cameraController;
     PlayerController playerController;
     EnemyPlayerController enemyPlayerController;
@@ -48,12 +47,14 @@ public class EnemyPlayerController : MonoBehaviour
     float x;
     float z;
     float distance;
-    float obstacleCheckDistance = 3.0f;
+    float obstacleCheckDistance = 2.0f;
     float obstacleCheckHeight = 1.5f;
     float lookTimer;
     float headAngle;
     float lookSpeed;
     float timer;
+    float chaseTimer = 16;
+    bool bigJump;
 
     void Start()
     {
@@ -63,6 +64,8 @@ public class EnemyPlayerController : MonoBehaviour
             speed = 20f;
             rb.useGravity = false;
             GetComponent<BoxCollider>().enabled = false;
+            randomObj.transform.position += new Vector3(0, 50, 0);
+            randomObj.GetComponent<randomTransformSprict>().speed = 100f;
         }
         else
         {
@@ -146,39 +149,43 @@ public class EnemyPlayerController : MonoBehaviour
         rb.velocity = new Vector3(direction.x * speed, rb.velocity.y, direction.z * speed);
         if (_state == myState.Idle && roleNumber == 1)
         {
-            lookSpeed = 5f;
-            timer += Time.deltaTime;
-            if (timer < 5) lookSpeed = 0.1f;
-
-            lookTimer += Time.deltaTime;
-            headAngle = Mathf.Sin(lookTimer * lookSpeed) * 60f;
-
-            Vector3 moveDir = agent.desiredVelocity;
-            if (moveDir.magnitude > 0.1f)
+            chaseTimer += Time.deltaTime;
+            if(chaseTimer <= 15f)
             {
-                // 1. 移動方向への回転を計算
-                Quaternion baseRotation = Quaternion.LookRotation(moveDir);
-                // 2. 首振り角度を足す
-                Quaternion finalRotation = baseRotation * Quaternion.Euler(0, headAngle, 0);
-                
-                // --- 修正ポイント：Y軸のみを抽出 ---
-                Vector3 rot = finalRotation.eulerAngles;
-                transform.rotation = Quaternion.Euler(0, rot.y, 0);
+                if(targetObj != null) randomObj.transform.position = targetObj.transform.position;
+            }
+            else
+            {
+                agent.updateRotation = false;
+                lookSpeed = 5f;
+                timer += Time.deltaTime;
+                if (timer < 5) lookSpeed = 0.1f;
+
+                lookTimer += Time.deltaTime;
+                headAngle = Mathf.Sin(lookTimer * lookSpeed) * 60f;
+
+                Vector3 moveDir = agent.desiredVelocity;
+                if (moveDir.magnitude > 0.1f)
+                {
+                    Quaternion baseRotation = Quaternion.LookRotation(moveDir);
+                    Quaternion finalRotation = baseRotation * Quaternion.Euler(0, headAngle, 0);
+                    Vector3 rot = finalRotation.eulerAngles;
+                    transform.rotation = Quaternion.Euler(0, rot.y, 0);
+                }   
             }
         }
         else if (_state == myState.Chasing)
         {
+            agent.updateRotation = false;
             GameObject target = GetNearest0Player();
             if (target != null)
             {
                 Vector3 targetDir = (target.transform.position - transform.position).normalized;
-                targetDir.y = 0; // すでに 0 ですが念のため
+                targetDir.y = 0;
                 
                 if (targetDir != Vector3.zero)
                 {
                     Quaternion lookRot = Quaternion.LookRotation(targetDir);
-                    
-                    // --- 修正ポイント：Slerpした後にY軸以外を捨てる ---
                     Quaternion slerpedRot = Quaternion.Slerp(transform.rotation, lookRot, 0.1f);
                     Vector3 rot = slerpedRot.eulerAngles;
                     transform.rotation = Quaternion.Euler(0, rot.y, 0);
@@ -188,14 +195,9 @@ public class EnemyPlayerController : MonoBehaviour
         }
         else
         {
-            if (agent.desiredVelocity.magnitude > 0.1f)
+            if (agent.desiredVelocity.magnitude > 0.5f)
             {
-                Quaternion lookRot = Quaternion.LookRotation(agent.desiredVelocity);
-                
-                // --- 修正ポイント：ここも同様 ---
-                Quaternion slerpedRot = Quaternion.Slerp(transform.rotation, lookRot, 0.1f);
-                Vector3 rot = slerpedRot.eulerAngles;
-                transform.rotation = Quaternion.Euler(0, rot.y, 0);
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(agent.desiredVelocity), 0.1f);
             }
         }
         if(pushedKey.Contains("Space"))
@@ -214,7 +216,7 @@ public class EnemyPlayerController : MonoBehaviour
                     myCollider.sharedMaterial = noFriction;
 
                     Vector3 vel = rb.velocity;
-                    vel.y = 0;
+                    if(!bigJump) vel.y = 0;
                     rb.velocity = vel;
 
                     RaycastHit hit;
@@ -233,7 +235,7 @@ public class EnemyPlayerController : MonoBehaviour
 
                     if (pushDirection != Vector3.zero)
                     {
-                        rb.AddForce(pushDirection * 20f, ForceMode.Impulse);
+                        rb.AddForce(pushDirection * 25f, ForceMode.Impulse);
                     }
 
                     rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
@@ -329,6 +331,10 @@ public class EnemyPlayerController : MonoBehaviour
         switch (_state)
         {
             case myState.Idle:
+                if(roleNumber != 2 && variableManager.missionNumber != -1)
+                {
+                    _state = myState.Mission;
+                }
                 if(roleNumber == 0)
                 {
                     if(GetNearest1Player() != null && distance <= 100 && IsTargetInSight(GetNearest1Player()))
@@ -356,20 +362,12 @@ public class EnemyPlayerController : MonoBehaviour
                     }
                     break;
                 }
-                if(roleNumber != 2 && variableManager.missionNumber != -1)
+                if(roleNumber == 2)
                 {
-                    _state = myState.Mission;
+                    MoveToID(randomObj.transform.position);
+                    if(randomObj.transform.position.y >= transform.position.y) PushKey(4);
+                    else PushKey(5);
                 }
-                random = Random.Range(0, 10);
-                if(random == 0)
-                {
-                    random = Random.Range(4, 6);
-                }
-                else
-                {
-                    random = Random.Range(0, 4);   
-                }
-                PushKey(random);
                 break;
 
             case myState.Steal:
@@ -413,14 +411,14 @@ public class EnemyPlayerController : MonoBehaviour
                 if (target != null && IsTargetInSight(target)) 
                 {
                     MoveToID(target.transform.position);
-                    randomObj.transform.position = target.transform.position;
-                    randomObj.transform.rotation = target.transform.rotation;
-                    randomObj.GetComponent<randomTransformSprict>().speed = 5f;
+                    targetObj = target;
+                    randomObj.transform.position = targetObj.transform.position;
                 }
                 else
                 {
                     // 見失ったらその場で止まるか、パトロールに切り替える
-                    if(_state == myState.Chasing) _state = myState.Idle; 
+                    if(_state == myState.Chasing) _state = myState.Idle;
+                    chaseTimer = 0;
                 }
                 break;
 
@@ -438,14 +436,39 @@ public class EnemyPlayerController : MonoBehaviour
                 }
                 if (police != null)
                 {
-                    // 警察とは反対方向の地点を算出
-                    Vector3 runDirection = transform.position - police.transform.position;
-                    Vector3 escapeTarget = transform.position + runDirection.normalized * 5f;
+                    // 1. 基本は警察と反対方向
+                    Vector3 runDirection = (transform.position - police.transform.position).normalized;
+                    Vector3 escapeTarget = transform.position + runDirection * 8f; // 少し遠めを目標にする
 
-                    // NavMeshを使ってその地点を目指す（MoveToIDを再利用）
+                    // 2. 逃げ先が「角」や「壁の外」でないかチェック
+                    UnityEngine.AI.NavMeshHit hit;
+                    // ターゲット地点の半径5m以内で、NavMesh上の有効な場所を探す
+                    if (UnityEngine.AI.NavMesh.SamplePosition(escapeTarget, out hit, 5f, UnityEngine.AI.NavMesh.AllAreas))
+                    {
+                        escapeTarget = hit.position;
+                    }
+                    else
+                    {
+                        // 3. もし真後ろが行き止まりなら、左右45度方向に逃げ道がないか試す
+                        Vector3 leftPath = Quaternion.Euler(0, 45, 0) * runDirection;
+                        Vector3 rightPath = Quaternion.Euler(0, -45, 0) * runDirection;
+                        
+                        // 左斜め後ろをチェック
+                        if (UnityEngine.AI.NavMesh.SamplePosition(transform.position + leftPath * 8f, out hit, 5f, UnityEngine.AI.NavMesh.AllAreas))
+                        {
+                            escapeTarget = hit.position;
+                        }
+                        // 右斜め後ろをチェック
+                        else if (UnityEngine.AI.NavMesh.SamplePosition(transform.position + rightPath * 8f, out hit, 5f, UnityEngine.AI.NavMesh.AllAreas))
+                        {
+                            escapeTarget = hit.position;
+                        }
+                    }
+
                     MoveToID(escapeTarget);
                 }
                 break;
+
             case myState.Mission:
                 if(variableManager.missionNumber == 0)
                 {
@@ -469,22 +492,26 @@ public class EnemyPlayerController : MonoBehaviour
     {
         if (agent == null) return;
 
-        // Agentの目的地を更新
         agent.SetDestination(destination);
-        
-        agent.nextPosition = transform.position; 
+        Vector3 dir = destination - transform.position;
+        dir.y = 0;
 
-        Vector3 desiredDirection = agent.desiredVelocity; 
-
-        if (desiredDirection.magnitude > 0.1f)
+        if (dir.magnitude > 0.1f)
         {
-            Vector3 localDir = transform.InverseTransformDirection(desiredDirection).normalized;
+            // 向きを安定させる
+            Quaternion targetRot = Quaternion.LookRotation(dir);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, 0.15f);
 
-            if (localDir.z > 0.2f) PushKey(2); // W
-            else if (localDir.z < -0.2f) PushKey(3); // S
+            // ローカル方向に変換
+            Vector3 localDir = transform.InverseTransformDirection(dir.normalized);
 
-            if (localDir.x > 0.2f) PushKey(0); // D
-            else if (localDir.x < -0.2f) PushKey(1); // A
+            // 前後
+            if (localDir.z > 0.3f) PushKey(2);      // W
+            else if (localDir.z < -0.3f) PushKey(3); // S
+
+            // 左右
+            if (localDir.x > 0.3f) PushKey(0);      // D
+            else if (localDir.x < -0.3f) PushKey(1); // A
         }
     }
 
@@ -586,7 +613,8 @@ public class EnemyPlayerController : MonoBehaviour
         if (!isStand) return;
         if (jumpCount >= jumpCountLimit) return;
 
-        Vector3 origin = transform.position + Vector3.up * 0.5f + -transform.forward * 2.5f; 
+        // originの高さのみ 0.5f から 0.2f に変更。これで低い段差を正面から捉えます
+        Vector3 origin = transform.position + Vector3.up * 0.2f + -transform.forward * 2.5f; 
         Vector3 dir = transform.forward;
         float radius = 0.5f; 
         float distance = obstacleCheckDistance + 2.5f;
@@ -597,24 +625,22 @@ public class EnemyPlayerController : MonoBehaviour
 
         foreach (var h in hits)
         {
-            // 自分自身なら無視して次へ
             if (h.collider.gameObject == gameObject) continue;
 
             if (h.collider.CompareTag("Stage"))
             {
-                // 壁との距離が近すぎる（密着している）場合も含めて判定可能
                 float heightDiff = h.point.y - transform.position.y;
 
+                // 条件を最初のもの(>-5f)に完全に戻しました。
                 if (heightDiff > -5f && heightDiff <= obstacleCheckHeight)
                 {
-                    PushKey(4); // Space
-                    return; // ジャンプを決定したら終了
+                    PushKey(4);
+                    return;
                 }
             }
-            
-            // Stage以外のものに先に当たったら、そこで遮蔽されているとみなすなら break;
         }
     }
+
     bool IsTargetInSight(GameObject target)
     {
         if (target == null) return false;
@@ -705,6 +731,7 @@ public class EnemyPlayerController : MonoBehaviour
     {
         if(collision.gameObject.CompareTag("Stage"))
         {
+            bigJump = false;
             foreach (ContactPoint contact in collision.contacts)
             {
                 // 上向きの法線（地面がプレイヤーを押し上げている状態）かチェック
@@ -756,6 +783,19 @@ public class EnemyPlayerController : MonoBehaviour
         if(collider.gameObject.tag == "daruma")
         {
             variableManager.clearMission = true;
+        }
+        if(collider.gameObject.CompareTag("Jump"))
+        {
+            if(roleNumber != 2)
+            {
+                if(!bigJump)
+                {
+                    bigJump = true;
+                    rb.AddForce(Vector3.up * jumpForce * 3.2f, ForceMode.Impulse);
+                    isStand = false;
+                    myCollider.sharedMaterial = noFriction;   
+                }
+            }
         }
     }
 

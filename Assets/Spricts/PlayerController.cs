@@ -28,6 +28,7 @@ public class PlayerController : MonoBehaviour
     int jumpCount;
     int jumpCountLimit;
     public bool isStand;
+    public bool bigJump;
     int missionSub;
     float x;
     float z;
@@ -93,7 +94,7 @@ public class PlayerController : MonoBehaviour
                     myCollider.sharedMaterial = noFriction;
 
                     Vector3 vel = rb.velocity;
-                    vel.y = 0;
+                    if(!bigJump) vel.y = 0;
                     rb.velocity = vel;
 
                     RaycastHit hit;
@@ -112,7 +113,7 @@ public class PlayerController : MonoBehaviour
 
                     if (pushDirection != Vector3.zero)
                     {
-                        rb.AddForce(pushDirection * 20f, ForceMode.Impulse);
+                        rb.AddForce(pushDirection * 25f, ForceMode.Impulse);
                     }
 
                     rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
@@ -218,6 +219,7 @@ public class PlayerController : MonoBehaviour
                 if (contact.normal.y > 0.5f)
                 {
                     isStand = true;
+                    bigJump = false;
                     jumpCount = 0;
                     myCollider.sharedMaterial = defaultFriction;
                     return; // 地面が見つかったので終了
@@ -258,6 +260,19 @@ public class PlayerController : MonoBehaviour
         if(collider.gameObject.tag == "daruma")
         {
             variableManager.clearMission = true;
+        }
+        if(collider.gameObject.CompareTag("Jump"))
+        {
+            if(roleNumber != 2)
+            {
+                if(!bigJump)
+                {
+                    bigJump = true;
+                    rb.AddForce(Vector3.up * jumpForce * 3.2f, ForceMode.Impulse);
+                    isStand = false;
+                    myCollider.sharedMaterial = noFriction;   
+                }
+            }
         }
     }
 

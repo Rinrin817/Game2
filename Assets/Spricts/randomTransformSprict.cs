@@ -9,14 +9,12 @@ public class randomTransformSprict : MonoBehaviour
     
     private Vector3 moveDirection;
     private float changeTimer;
-    float timer;
-    bool timeBool;
 
     void Start()
     {
         // 最初にランダムな方向を決める
         SetRandomDirection();
-        speed = 30f;
+        speed = 20f;
     }
 
     void Update()
@@ -28,7 +26,6 @@ public class randomTransformSprict : MonoBehaviour
         transform.position += moveDirection * speed * Time.deltaTime;
         // 3. 一定時間経ったらたまに方向を変える（ずっと同じ方向だと退屈なため）
         changeTimer += Time.deltaTime;
-        timer += Time.deltaTime;
         if (changeTimer > 1f)
         {
             SetRotateDirection();
@@ -38,19 +35,6 @@ public class randomTransformSprict : MonoBehaviour
         {
             SetRandomDirection();
             changeTimer = 0;
-        }
-        if(speed != 30)
-        {
-            if(!timeBool)
-            {
-                timer = 0;
-                timeBool = true;
-            }
-            if(timer >= 3f)
-            {
-                speed = 30f;
-                timeBool = false;
-            }
         }
     }
 
@@ -64,13 +48,9 @@ public class randomTransformSprict : MonoBehaviour
     
     void SetRandomDirection()
     {
-
-        // 新しい方向を決定
-
         float angle = Random.Range(0f, 360f);
-
-        moveDirection = new Vector3(Mathf.Sin(angle) * 2f, 0, Mathf.Cos(angle) * 2f).normalized;
-
+        Vector3 vector3 = transform.position + new Vector3(0,  Random.Range(-10f, 10f), 0);
+        moveDirection = new Vector3(Mathf.Sin(angle) * 2f, vector3.y, Mathf.Cos(angle) * 2f).normalized;
     }
 
     void CheckBounds()
@@ -99,6 +79,15 @@ public class randomTransformSprict : MonoBehaviour
         {
             pos.z = -range;
             moveDirection.z = Mathf.Abs(moveDirection.z);  // 強制的に奥（プラス）へ
+        }
+
+        if (pos.y > range)
+        {
+            pos.y -= 50;
+        }
+        else if (pos.z < -range)
+        {
+            pos.y += 50;
         }
 
         transform.position = pos;
