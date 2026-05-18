@@ -8,83 +8,100 @@ public class darumaSprict : MonoBehaviour
     [SerializeField] GameObject ManagerObj;
     [SerializeField] Transform[] targets;
     [SerializeField] float maxDistance = 80f;
+    [SerializeField] GameObject lightObj;
+    [SerializeField] AudioClip darumaAudio;
 
     VariableManager variableManager;
     PlayerController playerController;
     EnemyPlayerController enemyPlayerController;
+    AudioSource audioSource;
 
     float timeCount;
     float timeLimit;
     float speed;
     float random;
-
+    Quaternion firstRotation;
+    Quaternion finishRotation;
     bool finishRotate;
     public bool middleRotate;
+    public bool darumaSee;
+    bool audio;
 
     Quaternion targetRotation;
 
     void Start()
     {
+        audio = false;
+        audioSource = GetComponent<AudioSource>();
+        darumaSee = false;
         variableManager = ManagerObj.GetComponent<VariableManager>();
         timeLimit = Random.Range(1f, 3f);
         speed = Random.Range(5f, 10f);
         middleRotate = false;
         finishRotate = false;
 
-        targetRotation = Quaternion.Euler(0, 180, 0);
+        firstRotation = transform.rotation;
+        finishRotation = firstRotation * Quaternion.Euler(0, 180, 0);
+        targetRotation = finishRotation;
+
+        lightObj.GetComponent<Light>().color = Color.Lerp(Color.white, Color.red, 0.3f);
+        lightObj.GetComponent<Light>().intensity = 1f;
     }
 
     void Update()
     {
         timeCount += Time.deltaTime;
-
-        // --- 見ているときだけ検知 ---
-        if (timeCount >= timeLimit && !middleRotate)
+        for (int i = 0; i < variableManager.playerCount; i++)
         {
-            for (int i = 0; i < variableManager.playerCount; i++)
+            if (PlayerObj[i] == null || targets[i] == null) continue;
+
+            if (darumaSee && CanSeeTarget(targets[i])) // ★darumaSee中だけ判定
             {
-                if (PlayerObj[i] == null || targets[i] == null) continue;
-                if (CanSeeTarget(targets[i]))
-                {
-                    Debug.Log("標的を発見！");
+                var pc = PlayerObj[i].GetComponent<PlayerController>();
+                var epc = PlayerObj[i].GetComponent<EnemyPlayerController>();
 
-                    playerController = PlayerObj[i].GetComponent<PlayerController>();
-                    enemyPlayerController = PlayerObj[i].GetComponent<EnemyPlayerController>();
+                if (pc != null) pc.canMove = false;
+                if (epc != null) epc.canMove = false;
 
-                    var pc = PlayerObj[i].GetComponent<PlayerController>();
-                    var epc = PlayerObj[i].GetComponent<EnemyPlayerController>();
-
-                    if (pc != null) pc.canMove = false;
-                    if (epc != null) epc.canMove = false;
-                    if(i == 0)
-                    {
-                        variableManager.textString = "Cannot Move!";   
-                    }
-                }
+                if (i == 0) variableManager.textString = "Cannot Move!";
             }
         }
+        if (timeCount >= timeLimit && !middleRotate)
+        {
+            lightObj.GetComponent<Light>().color = Color.Lerp(Color.black, Color.red, 0.5f);
+            lightObj.GetComponent<Light>().intensity = 5f;
+        }
 
-        // --- 回転処理 ---
         if(timeCount >= timeLimit)
         {
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * speed);
 
             if(!middleRotate)
             {
-                targetRotation = Quaternion.Euler(0, 180, 0);
-                random = Random.Range(0.3f, 8f);
+                if(!audio)
+                {
+                    audioSource.PlayOneShot(darumaAudio, 0.5f);
+                    audio = true;   
+                }
+                darumaSee = true;
+                random = Random.Range(2f, 5f);
+                targetRotation = finishRotation;
 
                 if(timeCount >= timeLimit + random)
                 {
                     middleRotate = true;
-                    targetRotation = Quaternion.Euler(0, 0, 0);
+                    targetRotation = firstRotation;
+                    lightObj.GetComponent<Light>().color = Color.Lerp(Color.white, Color.red, 0.3f);
+                    lightObj.GetComponent<Light>().intensity = 1f;
                 }
             }
             else
             {
-                if(timeCount >= timeLimit + 5.1f)
+                darumaSee = false;
+                if(timeCount >= timeLimit + 5f)
                 {
                     finishRotate = true;
+
                     for (int i = 0; i < variableManager.playerCount; i++)
                     {
                         var pc = PlayerObj[i].GetComponent<PlayerController>();
@@ -99,18 +116,20 @@ public class darumaSprict : MonoBehaviour
             if(finishRotate)
             {
                 timeCount = 0;
-                timeLimit = Random.Range(1f, 3f);
+                timeLimit = Random.Range(2f, 6f);
                 speed = Random.Range(5f, 10f);
                 finishRotate = false;
                 middleRotate = false;
+                audio = false;
                 variableManager.textString = " ";
+
                 for (int i = 0; i < variableManager.playerCount; i++)
                 {
-                    playerController = PlayerObj[i].GetComponent<PlayerController>();
-                    enemyPlayerController = PlayerObj[i].GetComponent<EnemyPlayerController>();
+                    var pc = PlayerObj[i].GetComponent<PlayerController>();
+                    var epc = PlayerObj[i].GetComponent<EnemyPlayerController>();
 
-                    if (playerController != null) playerController.canMove = true;
-                    if (enemyPlayerController != null) enemyPlayerController.canMove = true;
+                    if (pc != null) pc.canMove = true;
+                    if (epc != null) epc.canMove = true;
                 }
             }
         }
@@ -120,19 +139,28 @@ public class darumaSprict : MonoBehaviour
     {
         if (target == null) return false;
 
-        Vector3 dir = target.position - transform.position;
-        float distance = dir.magnitude;
+        Vector3 eye = transform.position + Vector3.up * 13f;
+        Vector3 targetPos = target.position + Vector3.up * 1.0f;
 
-        if (distance > maxDistance) return false;
+        Vector3 dir = targetPos - eye;
+        float dist = dir.magnitude;
 
-        RaycastHit[] hits = Physics.RaycastAll(transform.position, dir.normalized, distance);
+        // 距離
+        if (dist > maxDistance) return false;
+
+        Vector3 dirN = dir.normalized;
+
+        // ★前半球判定（これが本質）
+        if (Vector3.Dot(transform.forward, dirN) < 0f)
+            return false;
+
+        // ★遮蔽チェック（1本だけ）
+        RaycastHit[] hits = Physics.RaycastAll(eye, dirN, dist);
         System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-
-        Debug.Log("=== 判定開始 ===");
 
         foreach (var hit in hits)
         {
-            if (hit.transform == target)
+            if (hit.transform.IsChildOf(target))
                 return true;
 
             if (hit.transform.CompareTag("Transparent") || hit.transform.CompareTag("daruma"))

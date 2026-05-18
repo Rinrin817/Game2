@@ -3,7 +3,10 @@ guid: 525eef7d50979304c8f7a6d17b593356
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - GemObj: {instanceID: 0}
+  - ManagerObj: {instanceID: 0}
+  - openStrongBox: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

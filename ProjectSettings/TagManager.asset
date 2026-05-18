@@ -11,16 +11,19 @@ TagManager:
   - Transparent
   - StrongBox
   - Jump
+  - haveJump
+  - Jump2
+  - Water
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - NotBake
   - Water
   - UI
-  - 
-  - 
-  - 
+  - 0Player
+  - 1Player
+  - 2Player
   - 
   - 
   - 

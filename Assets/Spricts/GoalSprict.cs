@@ -31,7 +31,7 @@ public class GoalSprict : MonoBehaviour
             Debug.Log("collision");
             if(collision.gameObject.GetComponent<PlayerController>() != null && collision.gameObject.GetComponent<PlayerController>().roleNumber == 0)
             {
-                variableManager.isFinish = 0;
+                VariableManager.isFinish = 0;
             }
             if(collision.gameObject.GetComponent<EnemyPlayerController>() != null && collision.gameObject.GetComponent<EnemyPlayerController>().roleNumber == 0)
             {

@@ -9,24 +9,19 @@ public class randomTransformSprict : MonoBehaviour
     
     private Vector3 moveDirection;
     private float changeTimer;
+    Vector3 vector3;
 
     void Start()
     {
-        // 最初にランダムな方向を決める
         SetRandomDirection();
-        speed = 20f;
     }
 
     void Update()
     {
-        // 1. 座標をチェックして、範囲を超えていたら反射させる
-        CheckBounds();
-
-        // 2. 移動実行
         transform.position += moveDirection * speed * Time.deltaTime;
-        // 3. 一定時間経ったらたまに方向を変える（ずっと同じ方向だと退屈なため）
+        CheckBounds();
         changeTimer += Time.deltaTime;
-        if (changeTimer > 1f)
+        if (changeTimer > 0.5f)
         {
             SetRotateDirection();
             changeTimer = 0;
@@ -42,14 +37,14 @@ public class randomTransformSprict : MonoBehaviour
     {
         // もし動いていないなら、向いている正面を基準にする
         Vector3 baseDir = moveDirection == Vector3.zero ? transform.forward : moveDirection;
-        Quaternion rotation = Quaternion.Euler(0, Random.Range(-30f, 30f), 0);
+        Quaternion rotation = Quaternion.Euler(0, Random.Range(-0.1f, 0.1f), 0);
         moveDirection = (rotation * baseDir).normalized;
     }
     
     void SetRandomDirection()
     {
         float angle = Random.Range(0f, 360f);
-        Vector3 vector3 = transform.position + new Vector3(0,  Random.Range(-10f, 10f), 0);
+        vector3 = new Vector3(0,  Random.Range(-2f, 2f), 0);
         moveDirection = new Vector3(Mathf.Sin(angle) * 2f, vector3.y, Mathf.Cos(angle) * 2f).normalized;
     }
 
@@ -81,13 +76,15 @@ public class randomTransformSprict : MonoBehaviour
             moveDirection.z = Mathf.Abs(moveDirection.z);  // 強制的に奥（プラス）へ
         }
 
-        if (pos.y > range)
+        if (pos.y > range / 2)
         {
-            pos.y -= 50;
+            pos.y = range / 2;
+            moveDirection.y = -Mathf.Abs(moveDirection.y);
         }
-        else if (pos.z < -range)
+        else if (pos.y < -5)
         {
-            pos.y += 50;
+            pos.y = -5;
+            moveDirection.y = Mathf.Abs(moveDirection.y);
         }
 
         transform.position = pos;
