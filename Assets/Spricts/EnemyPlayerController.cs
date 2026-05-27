@@ -16,8 +16,8 @@ public class EnemyPlayerController : MonoBehaviour
     [SerializeField] PhysicMaterial defaultFriction;
     [SerializeField] PhysicMaterial noFriction;
     [SerializeField] Transform[] darumaTransform;
-    [SerializeField] Transform prisonTransform;
-    [SerializeField] Transform goalTransform;
+    [SerializeField] Transform[] prisonTransformArray;
+    [SerializeField] Transform[] goalTransformArray;
     [SerializeField] GameObject randomObj;
     [SerializeField] AudioClip goodAction;
 
@@ -39,6 +39,8 @@ public class EnemyPlayerController : MonoBehaviour
 
     Animator animator;
     AudioSource audioSource;
+    Transform prisonTransform;
+    Transform goalTransform;
     CameraController cameraController;
     Vector3 lastDestination;
     Vector3 nowDestination;
@@ -81,6 +83,8 @@ public class EnemyPlayerController : MonoBehaviour
 
     void Start()
     {
+        prisonTransform = prisonTransformArray[VariableManager.stageNumber];
+        goalTransform = goalTransformArray[VariableManager.stageNumber];
         audioSource = GetComponent<AudioSource>();
         GetComponent<Renderer>().material = materials[roleNumber];
         if(roleNumber == 0)
@@ -766,7 +770,7 @@ public class EnemyPlayerController : MonoBehaviour
         {
             if(roleNumber != 2)
             {
-                LookDestinationPath(180f);
+                LookDestinationPath(90f);
             }
             PushKey(2);
             return;
@@ -957,6 +961,7 @@ public class EnemyPlayerController : MonoBehaviour
         return nearestGem;
     }
 
+    /*
     void CheckAndAutoJump()
     {
         if (!isStand) return;
@@ -1034,6 +1039,92 @@ public class EnemyPlayerController : MonoBehaviour
             }
         }
     }
+    */
+
+void CheckAndAutoJump()
+{
+    if (!isStand) return;
+    if (jumpCount >= jumpCountLimit) return;
+
+    if (wishJump)
+    {
+        PushKey(4);
+        PushKey(2);
+        return;
+    }
+
+    Vector3 origin =
+        transform.position +
+        Vector3.up * 0.1f +
+        transform.forward * 0.2f;
+
+    Vector3 dir = transform.forward;
+
+    float radius = 0.45f;
+    float distance = obstacleCheckDistance + 2f;
+
+    RaycastHit[] hits =
+        Physics.SphereCastAll(origin, radius, dir, distance);
+
+    System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+    foreach (var h in hits)
+    {
+        if (h.collider.gameObject == gameObject) continue;
+        if (!h.collider.CompareTag("Stage")) continue;
+
+        // =========================
+        // 接触地点の高さを見る
+        // =========================
+        float hitHeight = h.point.y;
+
+        float myBottom =
+            transform.position.y -
+            transform.localScale.y / 2f;
+
+        float heightDiff = hitHeight - myBottom;
+
+        // Debug.Log(heightDiff);
+
+        if (heightDiff > 0.02f &&
+            heightDiff <= obstacleCheckHeight)
+        {
+            // =========================
+            // 頭上チェック
+            // =========================
+            Vector3 upperOrigin =
+                transform.position +
+                Vector3.up * 1.3f;
+
+            RaycastHit[] upperHits =
+                Physics.SphereCastAll(
+                    upperOrigin,
+                    0.35f,
+                    dir,
+                    1.2f
+                );
+
+            bool blocked = false;
+
+            foreach (var uh in upperHits)
+            {
+                if (uh.collider.gameObject == gameObject)
+                    continue;
+
+                if (uh.collider.CompareTag("Stage"))
+                {
+                    blocked = true;
+                    break;
+                }
+            }
+
+            if (blocked) return;
+
+            PushKey(4);
+            return;
+        }
+    }
+}
 
     bool IsTargetInSight(GameObject target)
     {
@@ -1373,10 +1464,12 @@ public class EnemyPlayerController : MonoBehaviour
 
                 Debug.Log(gameObject.name + "ExtraInput");
                 // どの方向キーを押すか決める
+                if(Random.Range(0, 5) == 0) PushKey(4);
                 if (local.z > 0.1f) PushKey(2);   // W
                 else if (local.z < -0.1f) PushKey(3); // S
                 else if (local.x > 0.1f) PushKey(0);  // D
                 else if (local.x < -0.1f) PushKey(1); // A
+                LookDestinationPath(1000f);
                 hasExtraInput = true;
             }
         }

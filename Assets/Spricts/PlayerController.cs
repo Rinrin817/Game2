@@ -11,10 +11,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] GameObject ManagerObj;
     [SerializeField] GameObject[] prisonObj;
     [SerializeField] GameObject[] blenderObj;
+    [SerializeField] Transform[] prisonTransformArray;
     [SerializeField] Collider myCollider;
     [SerializeField] PhysicMaterial defaultFriction;
     [SerializeField] PhysicMaterial noFriction;
-    [SerializeField] Transform prisonTransform;
     [SerializeField] AudioClip goodAction;
     [SerializeField] AudioClip goodAction2;
     [SerializeField] AudioClip jump;
@@ -25,6 +25,7 @@ public class PlayerController : MonoBehaviour
     public int roleNumber;
     public int stateNumber;
     public bool canMove;
+    Transform prisonTransform;
     CameraController cameraController;
     EnemyPlayerController enemyPlayerController;
     VariableManager variableManager;
@@ -43,6 +44,7 @@ public class PlayerController : MonoBehaviour
 
     void Start()
     {
+        prisonTransform = prisonTransformArray[VariableManager.stageNumber];
         cameraNumber = -1;
         audioSource = GetComponent<AudioSource>();
         GetComponent<Renderer>().material = materials[roleNumber];

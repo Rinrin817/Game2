@@ -12,6 +12,7 @@ public class VariableManager : MonoBehaviour
     [SerializeField] Material[] materials;
     [SerializeField] Text timeCountText;
     [SerializeField] GameObject[] daruma0Obj;
+    [SerializeField] GameObject[] prisonObj;
     [SerializeField] GameObject lightObj;
     [SerializeField] Text upText;
     [SerializeField] Text coolTimeText;
@@ -21,10 +22,10 @@ public class VariableManager : MonoBehaviour
     [SerializeField] AudioSource smallAudioSource;
     [SerializeField] AudioClip prisonBreakAudio;
     public static int playerRole;
+    public static int stageNumber;
     public string textString;
     public int[] gemList;
     public int playerCount;
-    public GameObject[] prisonObjects;
     public bool prisonBreak;
     public static int isFinish;
     public bool isGoalOpen;
@@ -35,6 +36,7 @@ public class VariableManager : MonoBehaviour
     public float missionTimeCount;
     public float missionTimeCountLimit;
     public bool missionStart;
+    GameObject[] prisonObjects;
     PlayerController playerController;
     EnemyPlayerController[] enemyPlayerController;
     int[] roleArray;
@@ -52,6 +54,13 @@ public class VariableManager : MonoBehaviour
     void Awake()
     {
         DynamicGI.UpdateEnvironment();
+        stageNumber = 1;
+        Transform targetPrisonObj = prisonObj[stageNumber].transform;
+        prisonObjects = new GameObject[targetPrisonObj.childCount];
+        for (int i = 0; i < targetPrisonObj.childCount; i++)
+        {
+            prisonObjects[i] = targetPrisonObj.GetChild(i).gameObject;
+        }
         if(StartButton.playerCountStatic != 5 && StartButton.playerCountStatic != 9 && StartButton.playerCountStatic != 13)
         {
             playerCount = 5;
