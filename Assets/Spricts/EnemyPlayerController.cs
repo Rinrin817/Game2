@@ -180,7 +180,7 @@ public class EnemyPlayerController : MonoBehaviour
         Vector3 agentPos = agent.nextPosition;
         Vector3 realPos = transform.position;
         float dist = Vector3.Distance(agentPos, realPos);
-        if (dist >= 1.0f)
+        if (dist >= 3.0f)
         {
             agent.Warp(transform.position);
         }
@@ -779,7 +779,7 @@ public class EnemyPlayerController : MonoBehaviour
         if (!agent.isOnNavMesh) return;
         if (hasExtraInput)
         {
-            LookDestinationPath(360);
+            LookDestinationPath(90);
             return;
         }
         if (IsDropRequired(destination))
@@ -1406,10 +1406,16 @@ void CheckAndAutoJump()
     {
         if (collision.gameObject.CompareTag("Stage"))
         {
-            agent.Warp(transform.position);
+            Vector3 agentPos = agent.nextPosition;
+            Vector3 realPos = transform.position;
+            float dist = Vector3.Distance(agentPos, realPos);
+            if (dist >= 1.0f)
+            {
+                agent.Warp(transform.position);
+            }
             if(roleNumber != 2)
             {
-                LookDestinationPath(360f);
+                LookDestinationPath(90f);
             }
             if (isFalling)
             {
@@ -1469,7 +1475,7 @@ void CheckAndAutoJump()
                 else if (local.z < -0.1f) PushKey(3); // S
                 else if (local.x > 0.1f) PushKey(0);  // D
                 else if (local.x < -0.1f) PushKey(1); // A
-                LookDestinationPath(1000f);
+                LookDestinationPath(360f);
                 hasExtraInput = true;
             }
         }
