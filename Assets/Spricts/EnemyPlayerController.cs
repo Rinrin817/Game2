@@ -107,12 +107,12 @@ public class EnemyPlayerController : MonoBehaviour
             rb.useGravity = false;
             GetComponent<BoxCollider>().enabled = false;
             randomObj.transform.position += new Vector3(0, 50, 0);
-            randomObj.GetComponent<randomTransformSprict>().speed = 200f;
+            randomObj.GetComponent<randomTransformScript>().speed = 200f;
         }
         else
         {
             speed = 7f;
-            randomObj.GetComponent<randomTransformSprict>().speed = 50f;
+            randomObj.GetComponent<randomTransformScript>().speed = 50f;
         }
         if(roleNumber == 1)
         {
@@ -1517,12 +1517,12 @@ void CheckAndAutoJump()
     {
         if(collider.gameObject.tag == "Gem")
         {
-            variableManager.gemList[collider.gameObject.GetComponent<GemSprict>().gemNumber] = 1;
+            variableManager.gemList[collider.gameObject.GetComponent<GemScript>().gemNumber] = 1;
             if(!variableManager.gemList.Contains(0))
             {
                 variableManager.isGoalOpen = true;
             }
-            collider.gameObject.GetComponent<GemSprict>().effect = true;
+            collider.gameObject.GetComponent<GemScript>().effect = true;
         }
         if(collider.gameObject.tag == "daruma")
         {

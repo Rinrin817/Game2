@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Fusion;
+using Fusion.Sockets;
 
 public class CameraController : MonoBehaviour
 {
@@ -19,10 +21,30 @@ public class CameraController : MonoBehaviour
     {
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
+        PlayerTransform = null;
     }
 
     void Update()
     {
+        if(PlayerTransform == null)
+        {
+            var runner = FindFirstObjectByType<NetworkRunner>();
+
+            if (runner == null)
+            {
+                Debug.Log("noRunner");
+                return;
+            }
+
+            if (!runner.TryGetPlayerObject(runner.LocalPlayer, out var obj))
+            {
+                Debug.Log("noPlayer");
+                return;
+            }
+
+            PlayerTransform = obj.transform;
+            return;
+        }
         if(Input.GetMouseButton(0))
         {
             // マウス入力（既存想定）

@@ -5,15 +5,19 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System.Linq;
+using System.Threading.Tasks;
+using Fusion;
+using Fusion.Sockets;
 
-public class VariableManager : MonoBehaviour
+public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
 {
-    [SerializeField] GameObject[] PlayerObj;
+    GameObject[] PlayerObj = new GameObject[13];
     [SerializeField] Material[] materials;
     [SerializeField] Text timeCountText;
     [SerializeField] GameObject[] daruma0Obj;
     [SerializeField] GameObject[] prisonObj;
     [SerializeField] GameObject lightObj;
+    [SerializeField] GameObject playerPrefab;
     [SerializeField] Text upText;
     [SerializeField] Text coolTimeText;
     [SerializeField] AudioClip missionStartAudio;
@@ -21,6 +25,7 @@ public class VariableManager : MonoBehaviour
     [SerializeField] AudioSource audioSource;
     [SerializeField] AudioSource smallAudioSource;
     [SerializeField] AudioClip prisonBreakAudio;
+    [SerializeField] private NetworkRunner runnerPrefab;
     public static int playerRole;
     public static int stageNumber;
     public string textString;
@@ -37,6 +42,7 @@ public class VariableManager : MonoBehaviour
     public float missionTimeCountLimit;
     public bool missionStart;
     GameObject[] prisonObjects;
+    PlayerController[] playerControllers;
     PlayerController playerController;
     EnemyPlayerController[] enemyPlayerController;
     int[] roleArray;
@@ -48,11 +54,43 @@ public class VariableManager : MonoBehaviour
     int prisonPlayerCount;
     int goalPlayerCount;
     int continuePlayerCount;
-    PlayerController playerController2;
+    PlayerController playerControllers2;
+    NetworkRunner runner;
+    List<int> roles = new List<int>();
 
     // Start is called before the first frame update
+    void Start()
+    {
+        Invoke(nameof(SpawnPlayer), 1f);
+    }
+
+    void SpawnPlayer()
+    {
+        NetworkRunner runner = FindFirstObjectByType<NetworkRunner>();
+
+        var obj = runner.Spawn(
+            playerPrefab.GetComponent<NetworkObject>(),
+            Vector3.zero,
+            Quaternion.identity,
+            runner.LocalPlayer
+        );
+
+        runner.SetPlayerObject(runner.LocalPlayer, obj);
+    }
+
     void Awake()
     {
+        /*
+        for(int i = 0; i < playerCount; i ++)
+        {
+            runner.Spawn(
+                playerPrefab.GetComponent<NetworkObject>(),
+                Vector3.zero,
+                Quaternion.identity,
+                player
+            );   
+        }
+        */
         DynamicGI.UpdateEnvironment();
         stageNumber = 1;
         Transform targetPrisonObj = prisonObj[stageNumber].transform;
@@ -67,20 +105,9 @@ public class VariableManager : MonoBehaviour
         }
         else
         {
-            playerCount = StartButton.playerCountStatic;   
+            playerCount = StartButton.playerCountStatic;
         }
-        playerController = PlayerObj[0].GetComponent<PlayerController>();
-        enemyPlayerController = new EnemyPlayerController[playerCount];
-        for(int i = 0; i < playerCount - 1; i ++)
-        {
-            // Debug.Log(i.ToString());
-            enemyPlayerController[i] = PlayerObj[i + 1].GetComponent<EnemyPlayerController>();
-        }
-        for(int i = playerCount; i < 13; i ++)
-        {
-            PlayerObj[i].SetActive(false);
-        }
-        // playerController.roleNumber = 2;
+
         prisonBreak = true;
         previousPrisonBreak = true;
         isFinish = -1;
@@ -92,8 +119,6 @@ public class VariableManager : MonoBehaviour
         textString = " ";
         coolTimeText.text = " ";
         audio = false;
-
-        List<int> roles = new List<int>();
         if(playerCount == 5)
         {
             roles = new List<int> { 0, 0, 0, 1, 2 };
@@ -109,7 +134,6 @@ public class VariableManager : MonoBehaviour
             roles = new List<int> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2 };
             canMissionTimeLimit = 12f;  
         }
-        roles = roles.OrderBy(x => System.Guid.NewGuid()).ToList();
         if(playerRole == 0)
         {
             while(roles[0] != 0)
@@ -132,6 +156,7 @@ public class VariableManager : MonoBehaviour
             }
         }
         playerRole = roles[0];
+        /*
         roleArray = new int[playerCount];
         for(int i = 0; i < playerCount; i++)
         {
@@ -140,18 +165,36 @@ public class VariableManager : MonoBehaviour
 
             if(i == 0)
             {
-                playerController.roleNumber = finalRole;
-            }
-            else
-            {
-                enemyPlayerController[i - 1].roleNumber = finalRole;
+                playerControllers.roleNumber = finalRole;
             }
         }
+        */
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (playerController == null || !playerController.isActiveAndEnabled)
+        {
+            // Debug.Log("return");
+            return;
+        }
+        if(playerController == null)
+        {
+            playerControllers =
+                FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+
+            foreach(PlayerController player in playerControllers)
+            {
+                if(player.HasInputAuthority)
+                {
+                    playerController = player;
+                    break;
+                }
+            }
+
+            return;
+        }
         upText.text = textString;
         missionTimeCount += Time.deltaTime;
         canMissionTimeCount += Time.deltaTime;
@@ -299,13 +342,10 @@ public class VariableManager : MonoBehaviour
                 textString = " ";
                 for (int i = 0; i < playerCount; i++)
                 {
-                    playerController2 = PlayerObj[i].GetComponent<PlayerController>();
-                    EnemyPlayerController EPC = PlayerObj[i].GetComponent<EnemyPlayerController>();
-
-                    if (playerController2 != null) playerController2.canMove = true;
-                    if (EPC != null) EPC.canMove = true;
+                    playerControllers2 = PlayerObj[i].GetComponent<PlayerController>();
+                    if (playerControllers2 != null) playerControllers2.canMove = true;
                 }
-                playerController2 = PlayerObj[0].GetComponent<PlayerController>();
+                playerControllers2 = PlayerObj[0].GetComponent<PlayerController>();
             }
         }
         else
@@ -321,28 +361,13 @@ public class VariableManager : MonoBehaviour
         prisonPlayerCount = 0;
         goalPlayerCount = 0;
         continuePlayerCount = 0;
+        /*
         for(int i = 0; i < playerCount; i ++)
         {
-            playerController2 = PlayerObj[i].GetComponent<PlayerController>();
-            EnemyPlayerController EPC = PlayerObj[i].GetComponent<EnemyPlayerController>();
-            if (playerController2 != null)
+            playerControllers2 = PlayerObj[i].GetComponent<PlayerController>();
+            if (playerControllers2 != null)
             {
-                if(playerController2.roleNumber == 0 && playerController2.stateNumber == 1)
-                {
-                    prisonPlayerCount ++;
-                }
-                else if(PlayerObj[i].activeSelf == false)
-                {
-                    goalPlayerCount ++;
-                }
-                else
-                {
-                    continuePlayerCount ++;
-                }
-            }
-            if (EPC != null)
-            {
-                if(EPC.roleNumber == 0 && EPC.stateNumber == 1)
+                if(playerControllers2.roleNumber == 0 && playerControllers2.stateNumber == 1)
                 {
                     prisonPlayerCount ++;
                 }
@@ -389,5 +414,65 @@ public class VariableManager : MonoBehaviour
         {
             SceneManager.LoadScene("Home");
         }
+        */
     }
+
+    public override void Spawned()
+    {
+        Debug.Log("Spawned");
+        if(Runner.ActivePlayers.Count() == StartButton.playerCountStatic)
+        {
+            AssignRoles();
+        }
+    }
+
+    public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
+    {
+    }
+
+    void AssignRoles()
+    {
+        if(playerCount == 5)
+        {
+            roles = new List<int> { 0, 0, 0, 1, 2 };
+        }
+        else if(playerCount == 9)
+        {
+            roles = new List<int> { 0, 0, 0, 0, 0, 0, 1, 1, 2 };
+        }
+        else
+        {
+            roles = new List<int> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2 };
+        }
+
+        roles = roles.OrderBy(x => Random.value).ToList();
+
+        PlayerController[] players =
+            FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+
+        for(int i = 0; i < players.Length; i++)
+        {
+            players[i].roleNumber = roles[i];
+        }
+    }
+
+    public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
+    public void OnInput(NetworkRunner runner, NetworkInput input) { }
+    public void OnInputMissing(NetworkRunner runner, PlayerRef player, NetworkInput input) { }
+    public void OnShutdown(NetworkRunner runner, ShutdownReason shutdownReason) { }
+    public void OnConnectedToServer(NetworkRunner runner) { }
+    public void OnDisconnectedFromServer(NetworkRunner runner, NetDisconnectReason reason) { }
+    public void OnConnectRequest(NetworkRunner runner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token) { }
+    public void OnConnectFailed(NetworkRunner runner, NetAddress remoteAddress, NetConnectFailedReason reason) { }
+    public void OnUserSimulationMessage(NetworkRunner runner, SimulationMessagePtr message) { }
+    public void OnSessionListUpdated(NetworkRunner runner, System.Collections.Generic.List<SessionInfo> sessionList) { }
+    public void OnCustomAuthenticationResponse(NetworkRunner runner, System.Collections.Generic.Dictionary<string, object> data) { }
+    public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
+    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, System.ArraySegment<byte> data) { }
+    public void OnSceneLoadDone(NetworkRunner runner) { }
+    public void OnSceneLoadStart(NetworkRunner runner) { }
+    public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+    public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
+    public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
+    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, System.ArraySegment<byte> data) { }
 }

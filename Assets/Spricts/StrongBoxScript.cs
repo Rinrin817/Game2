@@ -6,7 +6,7 @@ using UnityEngine.AI;
 
 public class StrongBoxScript : MonoBehaviour
 {
-    [SerializeField] GameObject[] PlayerObj;
+    List<GameObject> PlayerObj = new List<GameObject>();
     [SerializeField] GameObject[] Objects;
     [SerializeField] GameObject GemObj;
     [SerializeField] GameObject ManagerObj;
@@ -16,7 +16,7 @@ public class StrongBoxScript : MonoBehaviour
     public bool action;
     public bool isOpen;
     Rigidbody rb;
-    PlayerController playerController;
+    List<PlayerController> playerController = new List<PlayerController>();
     EnemyPlayerController[] enemyPlayerController;
     VariableManager variableManager;
     float timeLimit = 2.5f;
@@ -28,18 +28,14 @@ public class StrongBoxScript : MonoBehaviour
         variableManager = ManagerObj.GetComponent<VariableManager>();
         action = false;
         isOpen = false;
-        enemyPlayerController = new EnemyPlayerController[variableManager.playerCount];
-        for(int i = 0; i < variableManager.playerCount; i++)
+    }
+
+    public void AddPlayer(GameObject player)
+    {
+        if (!PlayerObj.Contains(player))
         {
-            if(i == 0)
-            {
-                playerController = PlayerObj[i].GetComponent<PlayerController>();
-            }
-            else
-            {
-                enemyPlayerController[i - 1] = PlayerObj[i].GetComponent<EnemyPlayerController>();
-                //Debug.Log($"Index Check: i={i}, PlayerObjLength={PlayerObj.Length}, ArrayLength={enemyPlayerController.Length}");
-            }
+            PlayerObj.Add(player);
+            playerController.Add(player.GetComponent<PlayerController>());
         }
     }
 
@@ -54,12 +50,14 @@ public class StrongBoxScript : MonoBehaviour
             for(int i = 0; i < 6; i ++)
             {
                 GameObject Obj = Objects[i];
-                Obj.GetComponent<NavMeshObstacle>().enabled = false; // 先に穴を埋める
-                for(int i2 = 0; i2 < variableManager.playerCount; i2++)
+                Obj.GetComponent<NavMeshObstacle>().enabled = false;
+                foreach (GameObject player in PlayerObj)
                 {
+                    if (player == null) continue;
+
                     foreach (var objCol in Obj.GetComponents<Collider>())
                     {
-                        foreach (var playerCol in PlayerObj[i2].GetComponents<Collider>())
+                        foreach (var playerCol in player.GetComponents<Collider>())
                         {
                             Physics.IgnoreCollision(objCol, playerCol);
                         }
@@ -69,6 +67,7 @@ public class StrongBoxScript : MonoBehaviour
                         }
                     }   
                 }
+
                 rb = Obj.GetComponent<Rigidbody>();
                 rb.constraints = RigidbodyConstraints.None;
                 rb.AddForce(Vector3.up * 50f, ForceMode.Impulse);
@@ -88,15 +87,10 @@ public class StrongBoxScript : MonoBehaviour
     {
         if(other.gameObject.tag == "Player")
         {
-            if(Input.GetMouseButton(1) && playerController.roleNumber == 0)
+            if(other.gameObject.GetComponent<PlayerController>().roleNumber == 0)
             {
                 action = true;
                 audioSource.PlayOneShot(openStrongBox);
-            }
-            if(other.gameObject.GetComponent<EnemyPlayerController>() != null && other.gameObject.GetComponent<EnemyPlayerController>().pushedKey.Contains("Mouse1") && other.gameObject.GetComponent<EnemyPlayerController>().roleNumber == 0)
-            {
-                action = true;
-                audioSource.PlayOneShot(openStrongBox, 0.5f);
             }
         }
     }

@@ -2,16 +2,18 @@ using System.Collections;
 using Unity.VisualScripting;
 using UnityEngine;
 using System.Linq;
+using Fusion;
+using Fusion.Sockets;
+using System.Threading.Tasks;
 
-public class PlayerController : MonoBehaviour
+public class PlayerController : NetworkBehaviour
 {
     [SerializeField] Rigidbody rb;
     [SerializeField] GameObject cameraObj;
     [SerializeField] Material[] materials;
-    [SerializeField] GameObject ManagerObj;
-    [SerializeField] GameObject[] prisonObj;
+    GameObject ManagerObj;
+    GameObject[] prisonObj;
     [SerializeField] GameObject[] blenderObj;
-    [SerializeField] Transform[] prisonTransformArray;
     [SerializeField] Collider myCollider;
     [SerializeField] PhysicMaterial defaultFriction;
     [SerializeField] PhysicMaterial noFriction;
@@ -22,12 +24,11 @@ public class PlayerController : MonoBehaviour
     [SerializeField] AudioClip badAction;
     public float speed;
     public float jumpForce;
-    public int roleNumber;
-    public int stateNumber;
+    [Networked] public int roleNumber { get; set; }
+    [Networked] public int stateNumber { get; set; }
     public bool canMove;
     Transform prisonTransform;
     CameraController cameraController;
-    EnemyPlayerController enemyPlayerController;
     VariableManager variableManager;
     GameObject collisionObj;
     AudioSource audioSource;
@@ -39,24 +40,29 @@ public class PlayerController : MonoBehaviour
     public bool bigJump;
     bool runAnimationBool;
     int missionSub;
-    float x;
-    float z;
+
+    // ★他人の画面でもアニメーションを動かすために、ネットワーク変数(各画面で同期される)にします
+    [Networked] float x { get; set; }
+    [Networked] float z { get; set; }
 
     void Start()
     {
-        prisonTransform = prisonTransformArray[VariableManager.stageNumber];
+        Debug.Log($"{name} : {HasInputAuthority}");
+        ManagerObj = FindFirstObjectByType<VariableManager>().gameObject;
+        prisonObj = GameObject.FindGameObjectsWithTag("Prison");
+        prisonTransform = GameObject.Find("Prison").transform;
         cameraNumber = -1;
         audioSource = GetComponent<AudioSource>();
         GetComponent<Renderer>().material = materials[roleNumber];
         if(roleNumber == 0)
         {
             gameObject.layer = 6;
-            animator = Instantiate(blenderObj[0], gameObject.transform.position + new Vector3(0, 0.1f, 0), Quaternion.identity, gameObject.transform).GetComponent<Animator>();
+            animator = Instantiate(blenderObj[0], gameObject.transform.position + new Vector3(0, 0.1f, 0), Quaternion.Euler(new Vector3(0, 180, 0)), gameObject.transform).GetComponent<Animator>();
         }
         if(roleNumber == 1)
         {
             gameObject.layer = 7;
-            animator = Instantiate(blenderObj[1], gameObject.transform.position + new Vector3(0, 0.1f, 0), Quaternion.identity, gameObject.transform).GetComponent<Animator>();
+            animator = Instantiate(blenderObj[1], gameObject.transform.position + new Vector3(0, 0.1f, 0), Quaternion.Euler(new Vector3(0, 180, 0)), gameObject.transform).GetComponent<Animator>();
         }
         if(roleNumber == 2)
         {
@@ -82,7 +88,7 @@ public class PlayerController : MonoBehaviour
                     {
                         Physics.IgnoreCollision(objCol, playerCol);
                     }
-                }   
+                } 
             }
             speed = 7.5f;
         }
@@ -96,21 +102,93 @@ public class PlayerController : MonoBehaviour
         variableManager = ManagerObj.GetComponent<VariableManager>();
     }
 
+    // ★確実に動くように、シンプルな入力同期処理にします
+    public override void FixedUpdateNetwork()
+    {
+        // 自分が操作している画面のときだけ、キーボードの入力を反映してネットワーク変数に入れる
+        if (HasInputAuthority)
+        {
+            x = Input.GetAxisRaw("Horizontal");
+            z = Input.GetAxisRaw("Vertical");
+
+            // ★ジャンプ処理（自分の画面なら即座に実行されてラグがなくなります）
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                ExecuteJump();
+            }
+
+            // 空を飛ぶ処理
+            if (Input.GetKey(KeyCode.Space))
+            {
+                if (roleNumber == 2)
+                {
+                    transform.position += Vector3.up * 0.6f;
+                }
+            }
+        }
+
+        // 移動の計算は全員の画面で実行する（xとzがネットワーク変数なので他人にも同期されます）
+        Vector3 direction = transform.forward * z + transform.right * x;
+        rb.velocity = new Vector3(
+            direction.x * speed,
+            rb.velocity.y,
+            direction.z * speed
+        );
+    }
+
+    // ジャンプの実体（FixedUpdateNetworkから呼び出します）
+    void ExecuteJump()
+    {
+        if (roleNumber != 2 && isStand && canMove)
+        {
+            if (jumpCount < jumpCountLimit)
+            {
+                if (audioSource != null) audioSource.PlayOneShot(jump, 0.7f);
+                if (animator != null) animator.SetBool("isJumpAnimation", true);
+
+                myCollider.sharedMaterial = noFriction;
+
+                Vector3 vel = rb.velocity;
+                if (!bigJump) vel.y = 0;
+                rb.velocity = vel;
+
+                RaycastHit hit;
+                Vector3 pushDirection = Vector3.zero;
+                Vector3 rayOrigin = transform.position + Vector3.down * 0.5f;
+
+                if (Physics.Raycast(rayOrigin, transform.forward, out hit, 0.7f))
+                {
+                    if (hit.collider.CompareTag("Stage"))
+                    {
+                        pushDirection = hit.normal;
+                    }
+                }
+
+                if (pushDirection != Vector3.zero)
+                {
+                    rb.AddForce(pushDirection * 25f, ForceMode.Impulse);
+                }
+
+                rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+
+                jumpCount++;
+                isStand = false;
+            }
+        }
+    }
+
     void Update()
     {
-        if(variableManager.prisonBreak) stateNumber = 0;
         cameraController = cameraObj.GetComponent<CameraController>();
-        Vector3 direction = transform.forward * z + transform.right * x;
-        rb.velocity = new Vector3(direction.x * speed, rb.velocity.y, direction.z * speed);
+        if (Object.HasStateAuthority)
+        {
+            if(variableManager.prisonBreak) stateNumber = 0;
+        }
+
+        // アニメーション判定（全員の画面で動きます）
         if(canMove)
         {
-            x = Input.GetAxis("Horizontal");
-            z = Input.GetAxis("Vertical");
-
-            // 停止しきい値（走り中だけ緩める）
             float stopThreshold = runAnimationBool ? 0.2f : 0.5f;
-
-            // ★追加：このフレームで変更したか
             bool changed = false;
 
             if(animator != null && !animator.GetBool("isRunAnimation"))
@@ -126,7 +204,6 @@ public class PlayerController : MonoBehaviour
                 }
                 else
                 {
-                    // ★修正：停止条件(0.5)と重ならないようにする
                     if(x > 0.5f || z > 0.5f || x < -0.5f || z < -0.5f)
                     {
                         if(animator != null) animator.SetBool("isRunAnimation", true);
@@ -136,7 +213,6 @@ public class PlayerController : MonoBehaviour
                 }
             }
 
-            // ★同一フレームでの再変更を防ぐ
             if(animator != null && animator.GetBool("isRunAnimation") && !changed)
             {
                 if(runAnimationBool)
@@ -163,56 +239,12 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            x = 0;
-            z = 0;
             if(animator != null) animator.SetBool("isRunAnimation", false);
         }
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            if (roleNumber != 2 && isStand && canMove)
-            {
-                if (jumpCount < jumpCountLimit)
-                {
-                    audioSource.PlayOneShot(jump, 0.7f);
-                    if(animator != null) animator.SetBool("isJumpAnimation", true);
 
-                    myCollider.sharedMaterial = noFriction;
+        // 自分の画面だけの処理
+        if (!Object.HasStateAuthority) return;
 
-                    Vector3 vel = rb.velocity;
-                    if (!bigJump) vel.y = 0;
-                    rb.velocity = vel;
-
-                    RaycastHit hit;
-                    Vector3 pushDirection = Vector3.zero;
-                    Vector3 rayOrigin = transform.position + Vector3.down * 0.5f;
-
-                    if (Physics.Raycast(rayOrigin, transform.forward, out hit, 0.7f))
-                    {
-                        if (hit.collider.CompareTag("Stage"))
-                        {
-                            pushDirection = hit.normal;
-                        }
-                    }
-
-                    if (pushDirection != Vector3.zero)
-                    {
-                        rb.AddForce(pushDirection * 25f, ForceMode.Impulse);
-                    }
-
-                    rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-
-                    jumpCount++;
-                    isStand = false;
-                }
-            }
-        }
-        if(Input.GetKey(KeyCode.Space))
-        {
-            if(roleNumber == 2)
-            {
-                transform.position += Vector3.up * 0.6f;
-            }
-        }
         if(Input.GetKeyDown(KeyCode.LeftShift))
         {
             if(roleNumber == 0)
@@ -246,225 +278,74 @@ public class PlayerController : MonoBehaviour
                 }
             }
         }
+
+        // カメラ切り替え用
         if(roleNumber == 2)
         {
-            GameObject[] enemies = GameObject.FindGameObjectsWithTag("Player")
-                .Where(obj => obj != gameObject)
-                .OrderBy(obj => {
-                    // 名前から "EnemyPlayer" を除外して数字部分だけにする
-                    string numStr = obj.name.Replace("EnemyPlayer", "");
-                    
-                    // 数値に変換して、その値で並べ替える（変換できない場合は大きな値にするなどの安全策）
-                    int num;
-                    return int.TryParse(numStr, out num) ? num : int.MaxValue;
-                })
-                .ToArray();
-            if(cameraNumber != -1 && cameraNumber < enemies.Length)
+            GameObject[] playerObjs = new GameObject[13];
+            if(cameraNumber != -1 && cameraNumber < playerObjs.Length)
             {
-                transform.position = enemies[cameraNumber].transform.position;
+                transform.position = playerObjs[cameraNumber].transform.position;
 
                 if(Input.GetKey(KeyCode.UpArrow))
                 {
-                    transform.rotation = enemies[cameraNumber].transform.rotation;
+                    transform.rotation = playerObjs[cameraNumber].transform.rotation;
                 }
 
                 if(Input.GetKey(KeyCode.DownArrow))
                 {
-                    transform.rotation = enemies[cameraNumber].transform.rotation * Quaternion.Euler(0, 180, 0);
+                    transform.rotation = playerObjs[cameraNumber].transform.rotation * Quaternion.Euler(0, 180, 0);
                 }
             }
             else
             {
                 cameraNumber = -1;
             }
+
             if(Input.GetKeyDown(KeyCode.Alpha1))
             {
-                if(Input.GetKey(KeyCode.LeftShift) && enemies.Length > 9)
-                {
-                    if(cameraNumber == 9)
-                    {
-                        cameraNumber = -1;
-                    }
-                    else
-                    {
-                        cameraNumber = 9;
-                    }
-                }
-                else if(enemies.Length > 0)
-                {
-                    if(cameraNumber == 0)
-                    {
-                        cameraNumber = -1;
-                    }
-                    else
-                    {
-                        cameraNumber = 0;
-                    }
-                }
+                if(Input.GetKey(KeyCode.LeftShift) && playerObjs.Length > 9) { cameraNumber = cameraNumber == 9 ? -1 : 9; }
+                else if(playerObjs.Length > 0) { cameraNumber = cameraNumber == 0 ? -1 : 0; }
             }
             if(Input.GetKeyDown(KeyCode.Alpha2))
             {
-                if(Input.GetKey(KeyCode.LeftShift) && enemies.Length > 10)
-                {
-                    if(cameraNumber == 10)
-                    {
-                        cameraNumber = -1;
-                    }
-                    else
-                    {
-                        cameraNumber = 10;
-                    }
-                }
-                else if(enemies.Length > 1)
-                {
-                    if(cameraNumber == 1)
-                    {
-                        cameraNumber = -1;
-                    }
-                    else if(enemies.Length > 1)
-                    {
-                        cameraNumber = 1;
-                    }
-                }
+                if(Input.GetKey(KeyCode.LeftShift) && playerObjs.Length > 10) { cameraNumber = cameraNumber == 10 ? -1 : 10; }
+                else if(playerObjs.Length > 1) { cameraNumber = cameraNumber == 1 ? -1 : 1; }
             }
             if(Input.GetKeyDown(KeyCode.Alpha3))
             {
-                if(Input.GetKey(KeyCode.LeftShift) && enemies.Length > 11)
-                {
-                    if(cameraNumber == 11)
-                    {
-                        cameraNumber = -1;
-                    }
-                    else
-                    {
-                        cameraNumber = 11;
-                    }
-                }
-                else if(enemies.Length > 2)
-                {
-                    if(cameraNumber == 2)
-                    {
-                        cameraNumber = -1;
-                    }
-                    else if(enemies.Length > 2)
-                    {
-                        cameraNumber = 2;
-                    }
-                }
+                if(Input.GetKey(KeyCode.LeftShift) && playerObjs.Length > 11) { cameraNumber = cameraNumber == 11 ? -1 : 11; }
+                else if(playerObjs.Length > 2) { cameraNumber = cameraNumber == 2 ? -1 : 2; }
             }
-            if(Input.GetKeyDown(KeyCode.Alpha4))
-            {
-                if(cameraNumber == 3)
-                {
-                    cameraNumber = -1;
-                }
-                else if(enemies.Length > 3)
-                {
-                    cameraNumber = 3;
-                }
-            }
-            if(Input.GetKeyDown(KeyCode.Alpha5))
-            {
-                if(cameraNumber == 4)
-                {
-                    cameraNumber = -1;
-                }
-                else if(enemies.Length > 4)
-                {
-                    cameraNumber = 4;
-                }
-            }
-            if(Input.GetKeyDown(KeyCode.Alpha6))
-            {
-                if(cameraNumber == 5)
-                {
-                    cameraNumber = -1;
-                }
-                else if(enemies.Length > 5)
-                {
-                    cameraNumber = 5;
-                }
-            }
-
-            if(Input.GetKeyDown(KeyCode.Alpha7))
-            {
-                if(cameraNumber == 6)
-                {
-                    cameraNumber = -1;
-                }
-                else if(enemies.Length > 6)
-                {
-                    cameraNumber = 6;
-                }
-            }
-
-            if(Input.GetKeyDown(KeyCode.Alpha8))
-            {
-                if(cameraNumber == 7)
-                {
-                    cameraNumber = -1;
-                }
-                else if(enemies.Length > 7)
-                {
-                    cameraNumber = 7;
-                }
-            }
-
-            if(Input.GetKeyDown(KeyCode.Alpha9))
-            {
-                if(cameraNumber == 8)
-                {
-                    cameraNumber = -1;
-                }
-                else if(enemies.Length > 8)
-                {
-                    cameraNumber = 8;
-                }
-            }
+            if(Input.GetKeyDown(KeyCode.Alpha4)) { if(playerObjs.Length > 3) cameraNumber = cameraNumber == 3 ? -1 : 3; }
+            if(Input.GetKeyDown(KeyCode.Alpha5)) { if(playerObjs.Length > 4) cameraNumber = cameraNumber == 4 ? -1 : 4; }
+            if(Input.GetKeyDown(KeyCode.Alpha6)) { if(playerObjs.Length > 5) cameraNumber = cameraNumber == 5 ? -1 : 5; }
+            if(Input.GetKeyDown(KeyCode.Alpha7)) { if(playerObjs.Length > 6) cameraNumber = cameraNumber == 6 ? -1 : 6; }
+            if(Input.GetKeyDown(KeyCode.Alpha8)) { if(playerObjs.Length > 7) cameraNumber = cameraNumber == 7 ? -1 : 7; }
+            if(Input.GetKeyDown(KeyCode.Alpha9)) { if(playerObjs.Length > 8) cameraNumber = cameraNumber == 8 ? -1 : 8; }
         }
+
         if(missionSub != -1 && variableManager.missionSubNumber == -1 && roleNumber == 2)
         {
             if(missionSub == 0)
             {
                 variableManager.textString = "Push any ArrowKey to set DARUMA";
-                if(Input.GetKey(KeyCode.RightArrow))
-                {
-                    variableManager.missionNumber = 0;
-                    variableManager.missionSubNumber = 0;
-                    variableManager.canMission = false;
-                    variableManager.missionStart = true;
-                    variableManager.textString = " ";
-                    missionSub = -1;
-                }
-                if(Input.GetKey(KeyCode.LeftArrow))
-                {
-                    variableManager.missionNumber = 0;
-                    variableManager.missionSubNumber = 1;
-                    variableManager.canMission = false;
-                    variableManager.missionStart = true;
-                    variableManager.textString = " ";
-                    missionSub = -1;
-                }
-                if(Input.GetKey(KeyCode.UpArrow))
-                {
-                    variableManager.missionNumber = 0;
-                    variableManager.missionSubNumber = 2;
-                    variableManager.canMission = false;
-                    variableManager.missionStart = true;
-                    variableManager.textString = " ";
-                    missionSub = -1;
-                }
-                if(Input.GetKey(KeyCode.DownArrow))
-                {
-                    variableManager.missionNumber = 0;
-                    variableManager.missionSubNumber = 3;
-                    variableManager.canMission = false;
-                    variableManager.missionStart = true;
-                    variableManager.textString = " ";
-                    missionSub = -1;
-                }
+                if(Input.GetKey(KeyCode.RightArrow)) { SetMission(0, 0); }
+                if(Input.GetKey(KeyCode.LeftArrow)) { SetMission(0, 1); }
+                if(Input.GetKey(KeyCode.UpArrow)) { SetMission(0, 2); }
+                if(Input.GetKey(KeyCode.DownArrow)) { SetMission(0, 3); }
             }
         }
+    }
+
+    void SetMission(int num, int subNum)
+    {
+        variableManager.missionNumber = num;
+        variableManager.missionSubNumber = subNum;
+        variableManager.canMission = false;
+        variableManager.missionStart = true;
+        variableManager.textString = " ";
+        missionSub = -1;
     }
 
     void OnCollisionStay(Collision collision)
@@ -473,8 +354,6 @@ public class PlayerController : MonoBehaviour
         {
             foreach (ContactPoint contact in collision.contacts)
             {
-                // 上向きの法線（地面がプレイヤーを押し上げている状態）かチェック
-                // 0.5f くらいにすると、ある程度の坂道も地面として認められます
                 if (contact.normal.y > 0.5f)
                 {
                     isStand = true;
@@ -482,17 +361,17 @@ public class PlayerController : MonoBehaviour
                     jumpCount = 0;
                     myCollider.sharedMaterial = defaultFriction;
                     if(animator != null) animator.SetBool("isJumpAnimation", false);
-                    return; // 地面が見つかったので終了
+                    return;
                 }
             }
         }
         if(collision.gameObject.CompareTag("Player"))
         {
             collisionObj = collision.gameObject;
-            enemyPlayerController = collisionObj.GetComponent<EnemyPlayerController>();
-            if(roleNumber == 0 && enemyPlayerController.roleNumber == 1)
+            PlayerController playerController = collisionObj.GetComponent<PlayerController>();
+            if(roleNumber == 0 && playerController.roleNumber == 1)
             {
-                audioSource.PlayOneShot(badAction);
+                if (audioSource != null) audioSource.PlayOneShot(badAction);
                 stateNumber = 1;
                 transform.position = prisonTransform.transform.position;
                 variableManager.prisonBreak = false;
@@ -509,28 +388,28 @@ public class PlayerController : MonoBehaviour
 
     void OnTriggerEnter(Collider collider)
     {
-        if(collider.gameObject.tag == "Gem")
+        if(collider.gameObject.CompareTag("Gem"))
         {
-            audioSource.PlayOneShot(goodAction);
-            variableManager.gemList[collider.gameObject.GetComponent<GemSprict>().gemNumber] = 1;
+            if (audioSource != null) audioSource.PlayOneShot(goodAction);
+            variableManager.gemList[collider.gameObject.GetComponent<GemScript>().gemNumber] = 1;
             if(!variableManager.gemList.Contains(0))
             {
                 variableManager.isGoalOpen = true;
             }
-            collider.gameObject.GetComponent<GemSprict>().effect = true;
+            collider.gameObject.GetComponent<GemScript>().effect = true;
         }
-        if(collider.gameObject.tag == "daruma")
+        if(collider.gameObject.CompareTag("daruma"))
         {
-            audioSource.PlayOneShot(goodAction2);
+            if (audioSource != null) audioSource.PlayOneShot(goodAction2);
             variableManager.clearMission = true;
         }
-        if(collider.gameObject.tag == "Jump")
+        if(collider.gameObject.CompareTag("Jump"))
         {
             if(roleNumber != 2)
             {
                 if(!bigJump)
                 {
-                    audioSource.PlayOneShot(bigJumpAudio);
+                    if (audioSource != null) audioSource.PlayOneShot(bigJumpAudio);
                     if(animator != null) animator.SetBool("isJumpAnimation", true);
                     bigJump = true;
                     Vector3 vel = rb.velocity;
@@ -538,17 +417,17 @@ public class PlayerController : MonoBehaviour
                     rb.velocity = vel;
                     rb.AddForce(Vector3.up * jumpForce * 1.5f, ForceMode.Impulse);
                     isStand = false;
-                    myCollider.sharedMaterial = noFriction;   
+                    myCollider.sharedMaterial = noFriction; 
                 }
             }
         }
-        if(collider.gameObject.tag == "Jump2")
+        if(collider.gameObject.CompareTag("Jump2"))
         {
             if(roleNumber != 2)
             {
                 if(!bigJump)
                 {
-                    audioSource.PlayOneShot(bigJumpAudio);
+                    if (audioSource != null) audioSource.PlayOneShot(bigJumpAudio);
                     if(animator != null) animator.SetBool("isJumpAnimation", true);
                     bigJump = true;
                     Vector3 vel = rb.velocity;
@@ -556,7 +435,7 @@ public class PlayerController : MonoBehaviour
                     rb.velocity = vel;
                     rb.AddForce(Vector3.up * jumpForce * 2.2f, ForceMode.Impulse);
                     isStand = false;
-                    myCollider.sharedMaterial = noFriction;   
+                    myCollider.sharedMaterial = noFriction; 
                 }
             }
         }
@@ -564,11 +443,24 @@ public class PlayerController : MonoBehaviour
 
     void OnCollisionExit(Collision collision)
     {
-        if(collision.gameObject.tag == "Stage")
+        if(collision.gameObject.CompareTag("Stage"))
         {
             isStand = false;
             myCollider.sharedMaterial = noFriction;
             if(animator != null) animator.SetBool("isJumpAnimation", true);
         }
+    }
+
+    public override void Spawned()
+    {
+        Camera cam = GetComponentInChildren<Camera>(true);
+        if (!Object.HasInputAuthority)
+        {
+            cam.gameObject.SetActive(false);
+        }
+        var safe = FindFirstObjectByType<StrongBoxScript>();
+        safe.AddPlayer(this.gameObject);
+        var safe2 = FindFirstObjectByType<GemScript>();
+        safe2.AddPlayer(this.gameObject);
     }
 }
