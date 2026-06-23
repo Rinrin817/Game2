@@ -1,17 +1,16 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System.Linq;
-using System.Threading.Tasks;
 using Fusion;
 using Fusion.Sockets;
 
 public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
 {
-    GameObject[] PlayerObj = new GameObject[13];
+    public List<GameObject> PlayerObj = new List<GameObject>();
+    // [Networked] private int seed { get; set; }
     [SerializeField] Material[] materials;
     [SerializeField] Text timeCountText;
     [SerializeField] GameObject[] daruma0Obj;
@@ -53,29 +52,150 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     float canMissionTimeLimit;
     int prisonPlayerCount;
     int goalPlayerCount;
+    bool hasSpawned = false;
     int continuePlayerCount;
     PlayerController playerControllers2;
     NetworkRunner runner;
     List<int> roles = new List<int>();
+    List<PlayerRef> players;
+    int seed;
+    int index;
 
-    // Start is called before the first frame update
-    void Start()
+    public override void Spawned()
     {
+        upText.text = "";
+        
+        // 1秒待ってから生成したい場合は、Fusionの関数で遅延実行する
         Invoke(nameof(SpawnPlayer), 1f);
     }
 
     void SpawnPlayer()
     {
         NetworkRunner runner = FindFirstObjectByType<NetworkRunner>();
+        if (runner == null) return;
 
+        if (runner.GetPlayerObject(runner.LocalPlayer) != null) return;
+
+        index = runner.LocalPlayer.PlayerId;
+        Vector3 targetPosition = Vector3.zero;
+        if(index == 0)
+        {
+            targetPosition = new Vector3(0, 10, 0);
+        }
+        if(index == 1)
+        {
+            targetPosition = new Vector3(0, 10, 5);
+        }
+        if(index == 2)
+        {
+            targetPosition = new Vector3(0, 10, -5);
+        }
+        if(index == 3)
+        {
+            targetPosition = new Vector3(0, 10, 10);
+        }
+        if(index == 4)
+        {
+            targetPosition = new Vector3(0, 10, -10);
+        }
         var obj = runner.Spawn(
             playerPrefab.GetComponent<NetworkObject>(),
-            Vector3.zero,
+            targetPosition,
             Quaternion.identity,
             runner.LocalPlayer
         );
-
         runner.SetPlayerObject(runner.LocalPlayer, obj);
+        
+        playerCount = runner.ActivePlayers.Count();
+        Debug.Log(playerCount.ToString());
+
+        if (runner.IsSharedModeMasterClient)
+        {
+            var myPlayer = obj.GetComponent<PlayerController>();
+            if (myPlayer != null)
+            {
+                myPlayer.syncedSeed = Random.Range(1, 100000);
+            }
+        }
+
+        StartCoroutine(WaitAndAssign(obj.GetComponent<NetworkObject>(), runner));
+    }
+
+    IEnumerator WaitAndAssign(NetworkObject netObj, NetworkRunner runner)
+    {
+        while (netObj != null && !netObj.HasStateAuthority)
+        {
+            yield return null;
+        }
+        
+        // 1. 全員のプレイヤー生成が完全に完了するのを待つ
+        while (FindObjectsByType<PlayerController>(FindObjectsSortMode.None).Length != playerCount)
+        {
+            yield return null;
+        }
+
+        if (playerCount == 2)
+        {
+            roles = new List<int> { 0, 2 };
+            canMissionTimeLimit = 20f;
+        }
+        if (playerCount == 5)
+        {
+            roles = new List<int> { 0, 0, 0, 1, 2 };
+            canMissionTimeLimit = 20f;
+        }
+        if (playerCount == 9)
+        {
+            roles = new List<int> { 0, 0, 0, 0, 0, 0, 1, 1, 2 };
+            canMissionTimeLimit = 16f;
+        }
+        if (playerCount == 13)
+        {
+            roles = new List<int> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2 };
+            canMissionTimeLimit = 12f;
+        }
+
+        playerControllers = FindObjectsByType<PlayerController>(FindObjectsSortMode.None).OrderBy(x => x.GetComponent<NetworkObject>().Id).ToArray();
+
+        while (seed == 0)
+        {
+            foreach (var player in playerControllers)
+            {
+                if (player.syncedSeed != 0)
+                {
+                    seed = player.syncedSeed;
+                    break;
+                }
+            }
+            yield return null;
+        }
+
+        // 2. 全員共通のシード値で役職リストをシャッフル
+        Random.InitState(seed);
+        roles = roles.OrderBy(x => Random.value).ToList();
+
+        if(playerCount == 2 || playerCount == 5 || playerCount == 9 || playerCount == 13)
+        {
+            roleArray = new int[playerCount];
+            for(int i = 0; i < playerCount; i++)
+            {
+                int finalRole = roles[i];
+                roleArray[i] = finalRole;
+
+                // 名簿の「i番目」のプレイヤーが、自分自身（InputAuthority持ち）か直接判定する
+                if(playerControllers[i].HasInputAuthority)
+                {
+                    // ★ここで後々のために自分のコントローラーを代入して保持する
+                    playerController = playerControllers[i];
+                    index = i;
+
+                    // 自分の役職を代入
+                    playerController.roleNumber = finalRole;
+                    
+                    Debug.Log($"自分（index: {index}）に正しい役職 {finalRole} を配布し、変数に保存しました");
+                }
+            }
+        }
     }
 
     void Awake()
@@ -119,82 +239,13 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         textString = " ";
         coolTimeText.text = " ";
         audio = false;
-        if(playerCount == 5)
-        {
-            roles = new List<int> { 0, 0, 0, 1, 2 };
-            canMissionTimeLimit = 20f;
-        }
-        if(playerCount == 9)
-        {
-            roles = new List<int> { 0, 0, 0, 0, 0, 0, 1, 1, 2 };
-            canMissionTimeLimit = 16f;
-        }
-        if(playerCount == 13)
-        {
-            roles = new List<int> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2 };
-            canMissionTimeLimit = 12f;  
-        }
-        if(playerRole == 0)
-        {
-            while(roles[0] != 0)
-            {
-                roles = roles.OrderBy(x => System.Guid.NewGuid()).ToList();
-            }
-        }
-        if(playerRole == 1)
-        {
-            while(roles[0] != 1)
-            {
-                roles = roles.OrderBy(x => System.Guid.NewGuid()).ToList();
-            }
-        }
-        if(playerRole == 2)
-        {
-            while(roles[0] != 2)
-            {
-                roles = roles.OrderBy(x => System.Guid.NewGuid()).ToList();
-            }
-        }
-        playerRole = roles[0];
-        /*
-        roleArray = new int[playerCount];
-        for(int i = 0; i < playerCount; i++)
-        {
-            int finalRole = roles[i]; // シャッフル済みリストから順番に取る
-            roleArray[i] = finalRole;
-
-            if(i == 0)
-            {
-                playerControllers.roleNumber = finalRole;
-            }
-        }
-        */
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (playerController == null || !playerController.isActiveAndEnabled)
-        {
-            // Debug.Log("return");
-            return;
-        }
-        if(playerController == null)
-        {
-            playerControllers =
-                FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
-
-            foreach(PlayerController player in playerControllers)
-            {
-                if(player.HasInputAuthority)
-                {
-                    playerController = player;
-                    break;
-                }
-            }
-
-            return;
-        }
+        if(playerController == null) return;
+        if (!playerController.isActiveAndEnabled) return;
         upText.text = textString;
         missionTimeCount += Time.deltaTime;
         canMissionTimeCount += Time.deltaTime;
@@ -361,7 +412,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         prisonPlayerCount = 0;
         goalPlayerCount = 0;
         continuePlayerCount = 0;
-        /*
+        /* 勝敗
         for(int i = 0; i < playerCount; i ++)
         {
             playerControllers2 = PlayerObj[i].GetComponent<PlayerController>();
@@ -417,43 +468,9 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         */
     }
 
-    public override void Spawned()
-    {
-        Debug.Log("Spawned");
-        if(Runner.ActivePlayers.Count() == StartButton.playerCountStatic)
-        {
-            AssignRoles();
-        }
-    }
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-    }
-
-    void AssignRoles()
-    {
-        if(playerCount == 5)
-        {
-            roles = new List<int> { 0, 0, 0, 1, 2 };
-        }
-        else if(playerCount == 9)
-        {
-            roles = new List<int> { 0, 0, 0, 0, 0, 0, 1, 1, 2 };
-        }
-        else
-        {
-            roles = new List<int> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2 };
-        }
-
-        roles = roles.OrderBy(x => Random.value).ToList();
-
-        PlayerController[] players =
-            FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
-
-        for(int i = 0; i < players.Length; i++)
-        {
-            players[i].roleNumber = roles[i];
-        }
     }
 
     public void OnPlayerLeft(NetworkRunner runner, PlayerRef player) { }
@@ -468,11 +485,10 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     public void OnSessionListUpdated(NetworkRunner runner, System.Collections.Generic.List<SessionInfo> sessionList) { }
     public void OnCustomAuthenticationResponse(NetworkRunner runner, System.Collections.Generic.Dictionary<string, object> data) { }
     public void OnHostMigration(NetworkRunner runner, HostMigrationToken hostMigrationToken) { }
-    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, System.ArraySegment<byte> data) { }
+    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, System.ArraySegment<byte> data) { }
     public void OnSceneLoadDone(NetworkRunner runner) { }
     public void OnSceneLoadStart(NetworkRunner runner) { }
     public void OnObjectEnterAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnObjectExitAOI(NetworkRunner runner, NetworkObject obj, PlayerRef player) { }
     public void OnReliableDataProgress(NetworkRunner runner, PlayerRef player, ReliableKey key, float progress) { }
-    public void OnReliableDataReceived(NetworkRunner runner, PlayerRef player, ReliableKey key, System.ArraySegment<byte> data) { }
 }

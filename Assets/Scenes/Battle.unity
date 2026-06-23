@@ -617,20 +617,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 1233830011}
   - {fileID: 1090019935}
@@ -9799,20 +9785,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 1388948329}
   - {fileID: 429912092}
@@ -11721,20 +11693,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 195046241}
   - {fileID: 1408994962}
@@ -11894,6 +11852,8 @@ GameObject:
   - component: {fileID: 320043845}
   - component: {fileID: 320043844}
   - component: {fileID: 320043843}
+  - component: {fileID: 320043849}
+  - component: {fileID: 320043850}
   m_Layer: 3
   m_Name: Gem1
   m_TagString: Gem
@@ -11951,7 +11911,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 943677216}
-  PlayerObj: {fileID: 0}
   gemNumber: 5
   effect: 0
 --- !u!54 &320043845
@@ -12052,6 +12011,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 320043841}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &320043849
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 320043841}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 3000821560
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 320043850}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &320043850
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 320043841}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &323010138
 GameObject:
   m_ObjectHideFlags: 0
@@ -15658,6 +15653,8 @@ GameObject:
   - component: {fileID: 458701417}
   - component: {fileID: 458701416}
   - component: {fileID: 458701415}
+  - component: {fileID: 458701421}
+  - component: {fileID: 458701422}
   m_Layer: 3
   m_Name: Gem1
   m_TagString: Gem
@@ -15715,7 +15712,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 1422101685}
-  PlayerObj: {fileID: 0}
   gemNumber: 2
   effect: 0
 --- !u!54 &458701417
@@ -15816,6 +15812,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 458701413}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &458701421
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 458701413}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 229368407
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 458701422}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &458701422
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 458701413}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &460012564
 GameObject:
   m_ObjectHideFlags: 0
@@ -21949,6 +21981,8 @@ GameObject:
   - component: {fileID: 516841003}
   - component: {fileID: 516841002}
   - component: {fileID: 516841001}
+  - component: {fileID: 516841007}
+  - component: {fileID: 516841008}
   m_Layer: 3
   m_Name: Gem0
   m_TagString: Gem
@@ -22006,7 +22040,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 787972523}
-  PlayerObj: {fileID: 0}
   gemNumber: 1
   effect: 0
 --- !u!54 &516841003
@@ -22107,6 +22140,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 516840999}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &516841007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 516840999}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 3637830629
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 516841008}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &516841008
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 516840999}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &516921328
 GameObject:
   m_ObjectHideFlags: 0
@@ -22922,20 +22991,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 1857892032}
   - {fileID: 1912739016}
@@ -24764,20 +24819,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 1301353359}
   - {fileID: 193765691}
@@ -36527,20 +36568,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 1479057985}
   - {fileID: 1622751395}
@@ -37346,20 +37373,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 438013324}
   - {fileID: 758984457}
@@ -43560,13 +43573,13 @@ Light:
   m_Type: 2
   m_Shape: 0
   m_Color: {r: 1, g: 0.011764707, b: 0, a: 1}
-  m_Intensity: 10
-  m_Range: 12
+  m_Intensity: 15
+  m_Range: 12.3
   m_SpotAngle: 70
   m_InnerSpotAngle: 1
   m_CookieSize: 10
   m_Shadows:
-    m_Type: 0
+    m_Type: 1
     m_Resolution: -1
     m_CustomResolution: -1
     m_Strength: 1
@@ -50035,20 +50048,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 829151364}
   - {fileID: 979121831}
@@ -51997,20 +51996,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 707729500}
   - {fileID: 1015792633}
@@ -60125,6 +60110,8 @@ GameObject:
   - component: {fileID: 1025350747}
   - component: {fileID: 1025350746}
   - component: {fileID: 1025350745}
+  - component: {fileID: 1025350751}
+  - component: {fileID: 1025350752}
   m_Layer: 3
   m_Name: Gem0
   m_TagString: Gem
@@ -60182,7 +60169,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 1454105930}
-  PlayerObj: {fileID: 0}
   gemNumber: 6
   effect: 0
 --- !u!54 &1025350747
@@ -60283,6 +60269,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1025350743}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1025350751
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025350743}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 2664930339
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1025350752}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &1025350752
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1025350743}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &1027741927
 GameObject:
   m_ObjectHideFlags: 0
@@ -62059,6 +62081,8 @@ GameObject:
   - component: {fileID: 1088291777}
   - component: {fileID: 1088291776}
   - component: {fileID: 1088291775}
+  - component: {fileID: 1088291781}
+  - component: {fileID: 1088291782}
   m_Layer: 3
   m_Name: Gem0
   m_TagString: Gem
@@ -62116,7 +62140,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 2007100037}
-  PlayerObj: {fileID: 0}
   gemNumber: 3
   effect: 0
 --- !u!54 &1088291777
@@ -62217,6 +62240,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1088291773}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1088291781
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1088291773}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 3734083206
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1088291782}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &1088291782
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1088291773}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &1088533945
 GameObject:
   m_ObjectHideFlags: 0
@@ -62232,6 +62291,8 @@ GameObject:
   - component: {fileID: 1088533949}
   - component: {fileID: 1088533948}
   - component: {fileID: 1088533947}
+  - component: {fileID: 1088533953}
+  - component: {fileID: 1088533954}
   m_Layer: 3
   m_Name: Gem1
   m_TagString: Gem
@@ -62289,7 +62350,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 872937711}
-  PlayerObj: {fileID: 0}
   gemNumber: 7
   effect: 0
 --- !u!54 &1088533949
@@ -62390,6 +62450,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1088533945}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1088533953
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1088533945}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 2020826393
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1088533954}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &1088533954
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1088533945}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &1090019935
 GameObject:
   m_ObjectHideFlags: 0
@@ -63519,6 +63615,8 @@ GameObject:
   - component: {fileID: 1134287546}
   - component: {fileID: 1134287545}
   - component: {fileID: 1134287544}
+  - component: {fileID: 1134287550}
+  - component: {fileID: 1134287551}
   m_Layer: 3
   m_Name: Gem0
   m_TagString: Gem
@@ -63576,7 +63674,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 1328252788}
-  PlayerObj: {fileID: 0}
   gemNumber: 7
   effect: 0
 --- !u!54 &1134287546
@@ -63677,6 +63774,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1134287542}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1134287550
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1134287542}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 3646427370
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1134287551}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &1134287551
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1134287542}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &1144227872
 GameObject:
   m_ObjectHideFlags: 0
@@ -70034,20 +70167,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 975764835}
   - {fileID: 1289796703}
@@ -70727,20 +70846,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 1286827797}
   - {fileID: 260703991}
@@ -74492,20 +74597,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 115639639}
   - {fileID: 1594908834}
@@ -86341,6 +86432,8 @@ GameObject:
   - component: {fileID: 1415103448}
   - component: {fileID: 1415103449}
   - component: {fileID: 1415103450}
+  - component: {fileID: 1415103451}
+  - component: {fileID: 1415103452}
   m_Layer: 3
   m_Name: Gem0
   m_TagString: Gem
@@ -86475,7 +86568,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 1506169716}
-  PlayerObj: {fileID: 0}
   gemNumber: 0
   effect: 0
 --- !u!65 &1415103450
@@ -86499,6 +86591,42 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.2, y: 1.2, z: 1.2}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1415103451
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1415103443}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 231690570
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1415103452}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &1415103452
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1415103443}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &1416224866
 GameObject:
   m_ObjectHideFlags: 0
@@ -98568,6 +98696,8 @@ GameObject:
   - component: {fileID: 1496186967}
   - component: {fileID: 1496186966}
   - component: {fileID: 1496186965}
+  - component: {fileID: 1496186971}
+  - component: {fileID: 1496186972}
   m_Layer: 3
   m_Name: Gem1
   m_TagString: Gem
@@ -98625,7 +98755,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 1333119800}
-  PlayerObj: {fileID: 0}
   gemNumber: 6
   effect: 0
 --- !u!54 &1496186967
@@ -98726,6 +98855,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1496186963}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1496186971
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1496186963}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 1827307190
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1496186972}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &1496186972
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1496186963}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &1500230219
 GameObject:
   m_ObjectHideFlags: 0
@@ -106038,6 +106203,8 @@ GameObject:
   - component: {fileID: 1613700767}
   - component: {fileID: 1613700766}
   - component: {fileID: 1613700765}
+  - component: {fileID: 1613700771}
+  - component: {fileID: 1613700772}
   m_Layer: 3
   m_Name: Gem0
   m_TagString: Gem
@@ -106095,7 +106262,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 1854238527}
-  PlayerObj: {fileID: 0}
   gemNumber: 4
   effect: 0
 --- !u!54 &1613700767
@@ -106196,6 +106362,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1613700763}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1613700771
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1613700763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 3441053746
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1613700772}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &1613700772
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1613700763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &1619393503
 GameObject:
   m_ObjectHideFlags: 0
@@ -108032,6 +108234,8 @@ GameObject:
   - component: {fileID: 1654813398}
   - component: {fileID: 1654813397}
   - component: {fileID: 1654813396}
+  - component: {fileID: 1654813402}
+  - component: {fileID: 1654813403}
   m_Layer: 3
   m_Name: Gem1
   m_TagString: Gem
@@ -108089,7 +108293,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 1176664184}
-  PlayerObj: {fileID: 0}
   gemNumber: 4
   effect: 0
 --- !u!54 &1654813398
@@ -108190,6 +108393,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1654813394}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1654813402
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1654813394}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 320305118
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1654813403}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &1654813403
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1654813394}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &1657448984
 GameObject:
   m_ObjectHideFlags: 0
@@ -108835,6 +109074,8 @@ GameObject:
   - component: {fileID: 1681938100}
   - component: {fileID: 1681938099}
   - component: {fileID: 1681938098}
+  - component: {fileID: 1681938104}
+  - component: {fileID: 1681938105}
   m_Layer: 3
   m_Name: Gem0
   m_TagString: Gem
@@ -108892,7 +109133,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 206901145}
-  PlayerObj: {fileID: 0}
   gemNumber: 0
   effect: 0
 --- !u!54 &1681938100
@@ -108993,6 +109233,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1681938096}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1681938104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1681938096}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 2950119240
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1681938105}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &1681938105
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1681938096}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &1684055465
 GameObject:
   m_ObjectHideFlags: 0
@@ -109435,20 +109711,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 1408775619}
   - {fileID: 685423810}
@@ -109573,6 +109835,8 @@ GameObject:
   - component: {fileID: 1692656697}
   - component: {fileID: 1692656696}
   - component: {fileID: 1692656695}
+  - component: {fileID: 1692656701}
+  - component: {fileID: 1692656702}
   m_Layer: 3
   m_Name: Gem1
   m_TagString: Gem
@@ -109630,7 +109894,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 684490703}
-  PlayerObj: {fileID: 0}
   gemNumber: 3
   effect: 0
 --- !u!54 &1692656697
@@ -109731,6 +109994,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1692656693}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1692656701
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1692656693}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 4138595694
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1692656702}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &1692656702
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1692656693}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1001 &1697592546
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -109808,6 +110107,8 @@ GameObject:
   - component: {fileID: 1700877668}
   - component: {fileID: 1700877667}
   - component: {fileID: 1700877666}
+  - component: {fileID: 1700877672}
+  - component: {fileID: 1700877673}
   m_Layer: 3
   m_Name: Gem0
   m_TagString: Gem
@@ -109865,7 +110166,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 1939609774}
-  PlayerObj: {fileID: 0}
   gemNumber: 2
   effect: 0
 --- !u!54 &1700877668
@@ -109966,6 +110266,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1700877664}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1700877672
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1700877664}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 3833627479
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1700877673}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &1700877673
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1700877664}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &1701443648
 GameObject:
   m_ObjectHideFlags: 0
@@ -109997,20 +110333,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 1834171260}
   - {fileID: 626454315}
@@ -115713,20 +116035,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 2039169283}
   - {fileID: 1670239936}
@@ -129781,20 +130089,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 525eef7d50979304c8f7a6d17b593356, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  PlayerObj:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
   Objects:
   - {fileID: 1360542073}
   - {fileID: 1129735622}
@@ -141176,6 +141470,8 @@ GameObject:
   - component: {fileID: 2010392200}
   - component: {fileID: 2010392199}
   - component: {fileID: 2010392198}
+  - component: {fileID: 2010392204}
+  - component: {fileID: 2010392205}
   m_Layer: 3
   m_Name: Gem1
   m_TagString: Gem
@@ -141233,7 +141529,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 472653622}
-  PlayerObj: {fileID: 0}
   gemNumber: 1
   effect: 0
 --- !u!54 &2010392200
@@ -141334,6 +141629,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2010392196}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &2010392204
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2010392196}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 1502821443
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 2010392205}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &2010392205
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2010392196}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &2010968481
 GameObject:
   m_ObjectHideFlags: 0
@@ -141349,6 +141680,8 @@ GameObject:
   - component: {fileID: 2010968485}
   - component: {fileID: 2010968484}
   - component: {fileID: 2010968483}
+  - component: {fileID: 2010968489}
+  - component: {fileID: 2010968490}
   m_Layer: 3
   m_Name: Gem0
   m_TagString: Gem
@@ -141406,7 +141739,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   effectObj: {fileID: 1870889423}
-  PlayerObj: {fileID: 0}
   gemNumber: 5
   effect: 0
 --- !u!54 &2010968485
@@ -141507,6 +141839,42 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2010968481}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &2010968489
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2010968481}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SortKey: 923069705
+  ObjectInterest: 1
+  Flags: 262145
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 2010968490}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &2010968490
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2010968481}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  DisableSharedModeInterpolation: 0
 --- !u!1 &2011000799
 GameObject:
   m_ObjectHideFlags: 0

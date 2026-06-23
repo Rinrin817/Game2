@@ -1,6 +1,7 @@
 using System.Collections;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UI;
 using System.Linq;
 using Fusion;
 using Fusion.Sockets;
@@ -13,6 +14,7 @@ public class PlayerController : NetworkBehaviour
     [SerializeField] Material[] materials;
     GameObject ManagerObj;
     GameObject[] prisonObj;
+    [SerializeField] GameObject nameCanvas;
     [SerializeField] GameObject[] blenderObj;
     [SerializeField] Collider myCollider;
     [SerializeField] PhysicMaterial defaultFriction;
@@ -22,10 +24,15 @@ public class PlayerController : NetworkBehaviour
     [SerializeField] AudioClip jump;
     [SerializeField] AudioClip bigJumpAudio;
     [SerializeField] AudioClip badAction;
+    [SerializeField] private Text nameText;
+    [Networked, OnChangedRender(nameof(OnNameChanged))] public NetworkString<_16> NetworkPlayerName { get; set; }
     public float speed;
     public float jumpForce;
     [Networked] public int roleNumber { get; set; }
     [Networked] public int stateNumber { get; set; }
+    [Networked, Capacity(16)] public NetworkString<_16> PlayerName { get; set; }
+    [Networked] public int syncedSeed { get; set; } = 0;
+    [Networked] public int currentEmote { get; set; } = 0;
     public bool canMove;
     Transform prisonTransform;
     CameraController cameraController;
@@ -39,6 +46,8 @@ public class PlayerController : NetworkBehaviour
     public bool isStand;
     public bool bigJump;
     bool runAnimationBool;
+    bool isRoleCheck = false;
+    bool jogJumpRequest = false;
     int missionSub;
 
     // ★他人の画面でもアニメーションを動かすために、ネットワーク変数(各画面で同期される)にします
@@ -53,45 +62,6 @@ public class PlayerController : NetworkBehaviour
         prisonTransform = GameObject.Find("Prison").transform;
         cameraNumber = -1;
         audioSource = GetComponent<AudioSource>();
-        GetComponent<Renderer>().material = materials[roleNumber];
-        if(roleNumber == 0)
-        {
-            gameObject.layer = 6;
-            animator = Instantiate(blenderObj[0], gameObject.transform.position + new Vector3(0, 0.1f, 0), Quaternion.Euler(new Vector3(0, 180, 0)), gameObject.transform).GetComponent<Animator>();
-        }
-        if(roleNumber == 1)
-        {
-            gameObject.layer = 7;
-            animator = Instantiate(blenderObj[1], gameObject.transform.position + new Vector3(0, 0.1f, 0), Quaternion.Euler(new Vector3(0, 180, 0)), gameObject.transform).GetComponent<Animator>();
-        }
-        if(roleNumber == 2)
-        {
-            gameObject.layer = 8;
-        }
-        if(roleNumber == 2)
-        {
-            speed = 18f;
-            rb.useGravity = false;
-            GetComponent<BoxCollider>().enabled = false;
-        }
-        else
-        {
-            speed = 7f;
-        }
-        if(roleNumber == 1)
-        {
-            for(int i = 0; i < 6; i ++)
-            {
-                foreach (var objCol in prisonObj[i].GetComponents<Collider>())
-                {
-                    foreach (var playerCol in GetComponents<Collider>())
-                    {
-                        Physics.IgnoreCollision(objCol, playerCol);
-                    }
-                } 
-            }
-            speed = 7.5f;
-        }
         jumpForce = 12f;
         jumpCount = 0;
         jumpCountLimit = 1;
@@ -111,13 +81,20 @@ public class PlayerController : NetworkBehaviour
             x = Input.GetAxisRaw("Horizontal");
             z = Input.GetAxisRaw("Vertical");
 
-            // ★ジャンプ処理（自分の画面なら即座に実行されてラグがなくなります）
-            if (Input.GetKeyDown(KeyCode.Space))
+            if (jogJumpRequest)
             {
-                ExecuteJump();
-            }
+                // エモートの解除処理
+                if(animator != null) animator.SetBool("isHelloAnimation", false);
+                if(animator != null) animator.SetBool("isYurayuraAnimation", false);
+                if(animator != null) animator.SetBool("isDanceAnimation", false);
+                currentEmote = 0;
 
-            // 空を飛ぶ処理
+                ExecuteJump();
+
+                // ★超重要：ジャンプ処理が終わったらフラグを下ろす（押しっぱなし暴発を防ぐ）
+                jogJumpRequest = false; 
+            }
+            
             if (Input.GetKey(KeyCode.Space))
             {
                 if (roleNumber == 2)
@@ -127,11 +104,16 @@ public class PlayerController : NetworkBehaviour
             }
         }
 
+        float currentYVelocity = rb.velocity.y;
+        if (roleNumber == 2)
+        {
+            currentYVelocity = 0;
+        }
         // 移動の計算は全員の画面で実行する（xとzがネットワーク変数なので他人にも同期されます）
         Vector3 direction = transform.forward * z + transform.right * x;
         rb.velocity = new Vector3(
             direction.x * speed,
-            rb.velocity.y,
+            currentYVelocity,
             direction.z * speed
         );
     }
@@ -179,10 +161,80 @@ public class PlayerController : NetworkBehaviour
 
     void Update()
     {
+        if(!isRoleCheck && roleNumber != -1)
+        {
+            isRoleCheck = true;
+            if(roleNumber == 0)
+            {
+                gameObject.layer = 6;
+                animator = Instantiate(blenderObj[0], gameObject.transform.position + new Vector3(0, 0.1f, 0), Quaternion.Euler(new Vector3(0, 180, 0)), gameObject.transform).GetComponent<Animator>();
+            }
+            if(roleNumber == 1)
+            {
+                gameObject.layer = 7;
+                animator = Instantiate(blenderObj[1], gameObject.transform.position + new Vector3(0, 0.1f, 0), Quaternion.Euler(new Vector3(0, 180, 0)), gameObject.transform).GetComponent<Animator>();
+            }
+            if(roleNumber == 2)
+            {
+                gameObject.layer = 8;
+            }
+            if(roleNumber == 2)
+            {
+                speed = 18f;
+                rb.useGravity = false;
+                GetComponent<BoxCollider>().enabled = false;
+            }
+            else
+            {
+                speed = 7f;
+            }
+            if(roleNumber == 1)
+            {
+                for(int i = 0; i < 6; i ++)
+                {
+                    foreach (var objCol in prisonObj[i].GetComponents<Collider>())
+                    {
+                        foreach (var playerCol in GetComponents<Collider>())
+                        {
+                            Physics.IgnoreCollision(objCol, playerCol);
+                        }
+                    } 
+                }
+                speed = 7.5f;
+            }
+            GetComponent<Renderer>().material = materials[roleNumber];
+        }
         cameraController = cameraObj.GetComponent<CameraController>();
         if (Object.HasStateAuthority)
         {
             if(variableManager.prisonBreak) stateNumber = 0;
+        }
+
+        if (animator != null && animator.runtimeAnimatorController != null)
+        {
+            if (HasInputAuthority)
+            {
+                // Zキー：ハロー
+                if (Input.GetKeyDown(KeyCode.Z))
+                {
+                    // すでにハロー(1)なら解除(0)に、そうでないならハロー(1)にする
+                    currentEmote = (currentEmote == 1) ? 0 : 1;
+                }
+
+                // Xキー：ゆらゆら
+                if (Input.GetKeyDown(KeyCode.X))
+                {
+                    currentEmote = (currentEmote == 2) ? 0 : 2;
+                }
+
+                // Cキー：ダンス
+                if (Input.GetKeyDown(KeyCode.C))
+                {
+                    currentEmote = (currentEmote == 3) ? 0 : 3;
+                }
+            }
+
+            ApplyEmoteAnimation();   
         }
 
         // アニメーション判定（全員の画面で動きます）
@@ -198,6 +250,10 @@ public class PlayerController : NetworkBehaviour
                     if(x > 0.7f || z > 0.7f || x < -0.7f || z < -0.7f)
                     {
                         if(animator != null) animator.SetBool("isRunAnimation", true);
+                        if(animator != null) animator.SetBool("isHelloAnimation", false);
+                        if(animator != null) animator.SetBool("isYurayuraAnimation", false);
+                        if(animator != null) animator.SetBool("isDanceAnimation", false);
+                        currentEmote = 0;
                         runAnimationBool = false;
                         changed = true;
                     }
@@ -207,6 +263,10 @@ public class PlayerController : NetworkBehaviour
                     if(x > 0.5f || z > 0.5f || x < -0.5f || z < -0.5f)
                     {
                         if(animator != null) animator.SetBool("isRunAnimation", true);
+                        if(animator != null) animator.SetBool("isHelloAnimation", false);
+                        if(animator != null) animator.SetBool("isYurayuraAnimation", false);
+                        if(animator != null) animator.SetBool("isDanceAnimation", false);
+                        currentEmote = 0;
                         runAnimationBool = true;
                         changed = true;
                     }
@@ -245,6 +305,11 @@ public class PlayerController : NetworkBehaviour
         // 自分の画面だけの処理
         if (!Object.HasStateAuthority) return;
 
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            jogJumpRequest = true; // 「ジャンプしたい」という意思を記録
+        }
+
         if(Input.GetKeyDown(KeyCode.LeftShift))
         {
             if(roleNumber == 0)
@@ -252,11 +317,19 @@ public class PlayerController : NetworkBehaviour
                 if(animator != null && animator.GetBool("isStandAnimation"))
                 {
                     if(animator != null) animator.SetBool("isStandAnimation", false);
+                    if(animator != null) animator.SetBool("isHelloAnimation", false);
+                    if(animator != null) animator.SetBool("isYurayuraAnimation", false);
+                    if(animator != null) animator.SetBool("isDanceAnimation", false);
+                    currentEmote = 0;
                     speed = 3f;
                 }
                 else
                 {
                     if(animator != null) animator.SetBool("isStandAnimation", true);
+                    if(animator != null) animator.SetBool("isHelloAnimation", false);
+                    if(animator != null) animator.SetBool("isYurayuraAnimation", false);
+                    if(animator != null) animator.SetBool("isDanceAnimation", false);
+                    currentEmote = 0;
                     speed = 7f;
                 }
             }
@@ -278,12 +351,51 @@ public class PlayerController : NetworkBehaviour
                 }
             }
         }
+        if(Input.GetKeyDown(KeyCode.Z))
+        {
+            if(animator != null && animator.GetBool("isHelloAnimation"))
+            {
+                if(animator != null) animator.SetBool("isHelloAnimation", false);
+            }
+            else
+            {
+                if(animator != null) animator.SetBool("isHelloAnimation", true);
+                if(animator != null) animator.SetBool("isYurayuraAnimation", false);
+                if(animator != null) animator.SetBool("isDanceAnimation", false);
+            }
+        }
+        if(Input.GetKeyDown(KeyCode.X))
+        {
+            if(animator != null && animator.GetBool("isYurayuraAnimation"))
+            {
+                if(animator != null) animator.SetBool("isYurayuraAnimation", false);
+            }
+            else
+            {
+                if(animator != null) animator.SetBool("isYurayuraAnimation", true);
+                if(animator != null) animator.SetBool("isHelloAnimation", false);
+                if(animator != null) animator.SetBool("isDanceAnimation", false);
+            }
+        }
+        if(Input.GetKeyDown(KeyCode.C))
+        {
+            if(animator != null && animator.GetBool("isDanceAnimation"))
+            {
+                if(animator != null) animator.SetBool("isDanceAnimation", false);
+            }
+            else
+            {
+                if(animator != null) animator.SetBool("isDanceAnimation", true);
+                if(animator != null) animator.SetBool("isYurayuraAnimation", false);
+                if(animator != null) animator.SetBool("isHelloAnimation", false);
+            }
+        }
 
         // カメラ切り替え用
         if(roleNumber == 2)
         {
-            GameObject[] playerObjs = new GameObject[13];
-            if(cameraNumber != -1 && cameraNumber < playerObjs.Length)
+            var playerObjs = variableManager.PlayerObj;
+            if(cameraNumber != -1 && cameraNumber < playerObjs.Count)
             {
                 transform.position = playerObjs[cameraNumber].transform.position;
 
@@ -304,25 +416,25 @@ public class PlayerController : NetworkBehaviour
 
             if(Input.GetKeyDown(KeyCode.Alpha1))
             {
-                if(Input.GetKey(KeyCode.LeftShift) && playerObjs.Length > 9) { cameraNumber = cameraNumber == 9 ? -1 : 9; }
-                else if(playerObjs.Length > 0) { cameraNumber = cameraNumber == 0 ? -1 : 0; }
+                if(Input.GetKey(KeyCode.LeftShift) && playerObjs.Count > 9) { cameraNumber = cameraNumber == 9 ? -1 : 9; }
+                else if(playerObjs.Count > 0) { cameraNumber = cameraNumber == 0 ? -1 : 0; }
             }
             if(Input.GetKeyDown(KeyCode.Alpha2))
             {
-                if(Input.GetKey(KeyCode.LeftShift) && playerObjs.Length > 10) { cameraNumber = cameraNumber == 10 ? -1 : 10; }
-                else if(playerObjs.Length > 1) { cameraNumber = cameraNumber == 1 ? -1 : 1; }
+                if(Input.GetKey(KeyCode.LeftShift) && playerObjs.Count > 10) { cameraNumber = cameraNumber == 10 ? -1 : 10; }
+                else if(playerObjs.Count > 1) { cameraNumber = cameraNumber == 1 ? -1 : 1; }
             }
             if(Input.GetKeyDown(KeyCode.Alpha3))
             {
-                if(Input.GetKey(KeyCode.LeftShift) && playerObjs.Length > 11) { cameraNumber = cameraNumber == 11 ? -1 : 11; }
-                else if(playerObjs.Length > 2) { cameraNumber = cameraNumber == 2 ? -1 : 2; }
+                if(Input.GetKey(KeyCode.LeftShift) && playerObjs.Count > 11) { cameraNumber = cameraNumber == 11 ? -1 : 11; }
+                else if(playerObjs.Count > 2) { cameraNumber = cameraNumber == 2 ? -1 : 2; }
             }
-            if(Input.GetKeyDown(KeyCode.Alpha4)) { if(playerObjs.Length > 3) cameraNumber = cameraNumber == 3 ? -1 : 3; }
-            if(Input.GetKeyDown(KeyCode.Alpha5)) { if(playerObjs.Length > 4) cameraNumber = cameraNumber == 4 ? -1 : 4; }
-            if(Input.GetKeyDown(KeyCode.Alpha6)) { if(playerObjs.Length > 5) cameraNumber = cameraNumber == 5 ? -1 : 5; }
-            if(Input.GetKeyDown(KeyCode.Alpha7)) { if(playerObjs.Length > 6) cameraNumber = cameraNumber == 6 ? -1 : 6; }
-            if(Input.GetKeyDown(KeyCode.Alpha8)) { if(playerObjs.Length > 7) cameraNumber = cameraNumber == 7 ? -1 : 7; }
-            if(Input.GetKeyDown(KeyCode.Alpha9)) { if(playerObjs.Length > 8) cameraNumber = cameraNumber == 8 ? -1 : 8; }
+            if(Input.GetKeyDown(KeyCode.Alpha4)) { if(playerObjs.Count > 3) cameraNumber = cameraNumber == 3 ? -1 : 3; }
+            if(Input.GetKeyDown(KeyCode.Alpha5)) { if(playerObjs.Count > 4) cameraNumber = cameraNumber == 4 ? -1 : 4; }
+            if(Input.GetKeyDown(KeyCode.Alpha6)) { if(playerObjs.Count > 5) cameraNumber = cameraNumber == 5 ? -1 : 5; }
+            if(Input.GetKeyDown(KeyCode.Alpha7)) { if(playerObjs.Count > 6) cameraNumber = cameraNumber == 6 ? -1 : 6; }
+            if(Input.GetKeyDown(KeyCode.Alpha8)) { if(playerObjs.Count > 7) cameraNumber = cameraNumber == 7 ? -1 : 7; }
+            if(Input.GetKeyDown(KeyCode.Alpha9)) { if(playerObjs.Count > 8) cameraNumber = cameraNumber == 8 ? -1 : 8; }
         }
 
         if(missionSub != -1 && variableManager.missionSubNumber == -1 && roleNumber == 2)
@@ -336,6 +448,22 @@ public class PlayerController : NetworkBehaviour
                 if(Input.GetKey(KeyCode.DownArrow)) { SetMission(0, 3); }
             }
         }
+    }
+
+    void LateUpdate()
+    {
+        if (Camera.main != null && nameCanvas != null)
+        {
+            nameCanvas.transform.rotation = Camera.main.transform.rotation;
+        }
+    }
+
+    void ApplyEmoteAnimation()
+    {
+        // currentEmoteの番号に応じて、Boolの値を一斉に制御する
+        animator.SetBool("isHelloAnimation",    currentEmote == 1);
+        animator.SetBool("isYurayuraAnimation", currentEmote == 2);
+        animator.SetBool("isDanceAnimation",    currentEmote == 3);
     }
 
     void SetMission(int num, int subNum)
@@ -451,6 +579,11 @@ public class PlayerController : NetworkBehaviour
         }
     }
 
+    private void OnNameChanged()
+    {
+        nameText.text = NetworkPlayerName.ToString();
+    }
+
     public override void Spawned()
     {
         Camera cam = GetComponentInChildren<Camera>(true);
@@ -462,5 +595,15 @@ public class PlayerController : NetworkBehaviour
         safe.AddPlayer(this.gameObject);
         var safe2 = FindFirstObjectByType<GemScript>();
         safe2.AddPlayer(this.gameObject);
+        if (Object.HasInputAuthority)
+        {
+            NetworkPlayerName = PlayerData.PlayerName;
+        }
+    }
+
+    public override void Render()
+    {
+        // 毎フレーム、ネットワーク変数の値をテキストに反映する
+        nameText.text = NetworkPlayerName.ToString();
     }
 }

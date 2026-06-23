@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 
 public class GemScript : MonoBehaviour
@@ -34,6 +35,7 @@ public class GemScript : MonoBehaviour
         {
             effectObj.SetActive(true);
             GetComponent<MeshRenderer>().enabled = false;
+            /*
             foreach (var objCol in GetComponents<Collider>())
             {
                 foreach (var player in PlayerObj)
@@ -45,7 +47,12 @@ public class GemScript : MonoBehaviour
                     }
                 }
             }
+            */
             timeCount += Time.deltaTime;
+            if(timeCount >= 5f)
+            {
+                Destroy(this.gameObject);
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: afe448a8b7c91d04a80b8cf5ffa22edc
+guid: 001fc925c2922ad4c9de372e87677c79
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
@@ -33,9 +33,67 @@ ModelImporter:
     extraUserProperties: []
     clipAnimations:
     - serializedVersion: 16
-      name: "\u30A2\u30FC\u30DE\u30C1\u30E5\u30A2|IdleAnimation"
-      takeName: "\u30A2\u30FC\u30DE\u30C1\u30E5\u30A2|IdleAnimation"
-      internalID: 3508074360878004233
+      name: Thief|Dance
+      takeName: Thief|Dance
+      internalID: 2834690620872760979
+      firstFrame: 0
+      lastFrame: 58
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 1
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
+      name: Thief|Hello
+      takeName: Thief|Hello
+      internalID: -1479172968077069654
+      firstFrame: 0
+      lastFrame: 27
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 1
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
+      name: Thief|IdleAnimation
+      takeName: Thief|IdleAnimation
+      internalID: -8725195407704342943
       firstFrame: 0
       lastFrame: 40
       wrapMode: 0
@@ -62,9 +120,9 @@ ModelImporter:
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
-      name: "\u30A2\u30FC\u30DE\u30C1\u30E5\u30A2|JumpAnimation"
-      takeName: "\u30A2\u30FC\u30DE\u30C1\u30E5\u30A2|JumpAnimation"
-      internalID: 4164180594612964329
+      name: Thief|JumpAnimation
+      takeName: Thief|JumpAnimation
+      internalID: -4200110751790607432
       firstFrame: 0
       lastFrame: 170
       wrapMode: 0
@@ -73,7 +131,7 @@ ModelImporter:
       cycleOffset: 0
       loop: 0
       hasAdditiveReferencePose: 0
-      loopTime: 1
+      loopTime: 0
       loopBlend: 0
       loopBlendOrientation: 0
       loopBlendPositionY: 0
@@ -91,9 +149,9 @@ ModelImporter:
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
-      name: "\u30A2\u30FC\u30DE\u30C1\u30E5\u30A2|JumpFinishAnimation"
-      takeName: "\u30A2\u30FC\u30DE\u30C1\u30E5\u30A2|JumpFinishAnimation"
-      internalID: -3115710009745648520
+      name: Thief|JumpFinishAnimation
+      takeName: Thief|JumpFinishAnimation
+      internalID: -1696978874068714728
       firstFrame: 0
       lastFrame: 4
       wrapMode: 0
@@ -120,11 +178,11 @@ ModelImporter:
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
-      name: "\u30A2\u30FC\u30DE\u30C1\u30E5\u30A2|RunAnimation"
-      takeName: "\u30A2\u30FC\u30DE\u30C1\u30E5\u30A2|RunAnimation"
-      internalID: 5318607354075410812
+      name: Thief|RunAnimation
+      takeName: Thief|RunAnimation
+      internalID: 415939567991832521
       firstFrame: 0
-      lastFrame: 23
+      lastFrame: 24
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
@@ -149,9 +207,9 @@ ModelImporter:
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
-      name: "\u30A2\u30FC\u30DE\u30C1\u30E5\u30A2|SquatAnimation"
-      takeName: "\u30A2\u30FC\u30DE\u30C1\u30E5\u30A2|SquatAnimation"
-      internalID: -3202298351453541035
+      name: Thief|SquatAnimation
+      takeName: Thief|SquatAnimation
+      internalID: -8737934425410993884
       firstFrame: 0
       lastFrame: 8
       wrapMode: 0
@@ -178,9 +236,9 @@ ModelImporter:
       maskSource: {instanceID: 0}
       additiveReferencePoseFrame: 0
     - serializedVersion: 16
-      name: "\u30A2\u30FC\u30DE\u30C1\u30E5\u30A2|StandAnimation"
-      takeName: "\u30A2\u30FC\u30DE\u30C1\u30E5\u30A2|StandAnimation"
-      internalID: -3695783674961442189
+      name: Thief|SquatAnimation.001
+      takeName: Thief|SquatAnimation.001
+      internalID: 8311590380555640396
       firstFrame: 0
       lastFrame: 8
       wrapMode: 0
@@ -190,6 +248,64 @@ ModelImporter:
       loop: 0
       hasAdditiveReferencePose: 0
       loopTime: 0
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
+      name: Thief|StandAnimation
+      takeName: Thief|StandAnimation
+      internalID: -6080445223371537192
+      firstFrame: 0
+      lastFrame: 8
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 0
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 3
+      maskSource: {instanceID: 0}
+      additiveReferencePoseFrame: 0
+    - serializedVersion: 16
+      name: Thief|Yurayura
+      takeName: Thief|Yurayura
+      internalID: -4898732628518344424
+      firstFrame: 0
+      lastFrame: 30
+      wrapMode: 0
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      hasAdditiveReferencePose: 0
+      loopTime: 1
       loopBlend: 0
       loopBlendOrientation: 0
       loopBlendPositionY: 0
