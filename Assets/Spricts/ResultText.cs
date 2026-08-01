@@ -51,19 +51,7 @@ public class ResultText : MonoBehaviour
     {
         if(Input.GetMouseButton(0))
         {
-            resultImage.SetActive(false);
-        }
-        if(Input.GetKey(KeyCode.Alpha0))
-        {
-            VariableManager.playerRole = 0;
-        }
-        if(Input.GetKey(KeyCode.Alpha1))
-        {
-            VariableManager.playerRole = 1;
-        }
-        if(Input.GetKey(KeyCode.Alpha2))
-        {
-            VariableManager.playerRole = 2;
+            if(resultText != null) resultImage.SetActive(false);
         }
     }
 }

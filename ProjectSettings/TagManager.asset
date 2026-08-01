@@ -14,6 +14,9 @@ TagManager:
   - haveJump
   - Jump2
   - Water
+  - PolliceObject
+  - RoleChange
+  - Skin
   layers:
   - Default
   - TransparentFX
@@ -24,7 +27,7 @@ TagManager:
   - 0Player
   - 1Player
   - 2Player
-  - 
+  - strongbox
   - 
   - 
   - 

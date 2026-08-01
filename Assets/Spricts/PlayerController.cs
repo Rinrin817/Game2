@@ -1,11 +1,13 @@
 using System.Collections;
+using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using System.Linq;
 using Fusion;
 using Fusion.Sockets;
-using System.Threading.Tasks;
+using System.Dynamic;
 
 public class PlayerController : NetworkBehaviour
 {
@@ -14,32 +16,39 @@ public class PlayerController : NetworkBehaviour
     [SerializeField] Material[] materials;
     GameObject ManagerObj;
     GameObject[] prisonObj;
+    GameObject parent;
+    GameObject NetworkObj;
     [SerializeField] GameObject nameCanvas;
-    [SerializeField] GameObject[] blenderObj;
+    [SerializeField] Image Joystick;
+    [SerializeField] GameObject[] thiefBlenderObj;
+    [SerializeField] GameObject[] polliceBlenderObj;
     [SerializeField] Collider myCollider;
     [SerializeField] PhysicMaterial defaultFriction;
     [SerializeField] PhysicMaterial noFriction;
     [SerializeField] AudioClip goodAction;
+    [SerializeField] AudioClip actionAudio;
     [SerializeField] AudioClip goodAction2;
     [SerializeField] AudioClip jump;
     [SerializeField] AudioClip bigJumpAudio;
     [SerializeField] AudioClip badAction;
-    [SerializeField] private Text nameText;
+    [SerializeField] TextMeshProUGUI nameText;
     [Networked, OnChangedRender(nameof(OnNameChanged))] public NetworkString<_16> NetworkPlayerName { get; set; }
     public float speed;
     public float jumpForce;
     [Networked] public int roleNumber { get; set; }
+    int roleNumber2;
     [Networked] public int stateNumber { get; set; }
     [Networked, Capacity(16)] public NetworkString<_16> PlayerName { get; set; }
     [Networked] public int syncedSeed { get; set; } = 0;
     [Networked] public int currentEmote { get; set; } = 0;
+    [Networked] public bool isMarked { get; set; } = false;
     public bool canMove;
     Transform prisonTransform;
     CameraController cameraController;
     VariableManager variableManager;
     GameObject collisionObj;
     AudioSource audioSource;
-    Animator animator;
+    public Animator animator;
     int jumpCount;
     int jumpCountLimit;
     int cameraNumber;
@@ -47,8 +56,15 @@ public class PlayerController : NetworkBehaviour
     public bool bigJump;
     bool runAnimationBool;
     bool isRoleCheck = false;
-    bool jogJumpRequest = false;
-    int missionSub;
+    bool jogJumpRequest;
+    float startCount = 0;
+    public int missionSub;
+    float cooldownTimer = 0f;
+    float cameraY2;
+    private GameObject targetDaruma;
+    float followSpeed = 1.5f;
+    float rotateSpeed = 25.0f; // 回転速度
+    string obstacleTag = "Stage";
 
     // ★他人の画面でもアニメーションを動かすために、ネットワーク変数(各画面で同期される)にします
     [Networked] float x { get; set; }
@@ -58,17 +74,18 @@ public class PlayerController : NetworkBehaviour
     {
         Debug.Log($"{name} : {HasInputAuthority}");
         ManagerObj = FindFirstObjectByType<VariableManager>().gameObject;
+        NetworkObj = GameObject.Find("NetworkRunner");
         prisonObj = GameObject.FindGameObjectsWithTag("Prison");
         prisonTransform = GameObject.Find("Prison").transform;
         cameraNumber = -1;
         audioSource = GetComponent<AudioSource>();
-        jumpForce = 12f;
+        jumpForce = 13;
         jumpCount = 0;
         jumpCountLimit = 1;
-        stateNumber = 0;
         missionSub = -1;
         canMove = true;
         runAnimationBool = false;
+        jogJumpRequest = false;
         variableManager = ManagerObj.GetComponent<VariableManager>();
     }
 
@@ -76,10 +93,36 @@ public class PlayerController : NetworkBehaviour
     public override void FixedUpdateNetwork()
     {
         // 自分が操作している画面のときだけ、キーボードの入力を反映してネットワーク変数に入れる
-        if (HasInputAuthority)
+        if (HasInputAuthority && canMove)
         {
-            x = Input.GetAxisRaw("Horizontal");
-            z = Input.GetAxisRaw("Vertical");
+            //x = Input.GetAxisRaw("Horizontal");
+            //z = Input.GetAxisRaw("Vertical");
+            if (Input.GetKey(KeyCode.D)) x = 1;
+            if (Input.GetKey(KeyCode.A)) x = -1;
+            if (Input.GetKey(KeyCode.W)) z = 1;
+            if (Input.GetKey(KeyCode.S)) z = -1;
+            if (!Input.GetKey(KeyCode.D) && !Input.GetKey(KeyCode.A)) x = 0;
+            if (!Input.GetKey(KeyCode.W) && !Input.GetKey(KeyCode.S)) z = 0;
+
+            if(Joystick != null) x = Joystick.GetComponent<JoystickScript>().moveDirection.x / 13f;
+            if(Joystick != null) z = Joystick.GetComponent<JoystickScript>().moveDirection.y / 13f;
+            if(Joystick != null && Joystick.GetComponent<JoystickScript>().isJumpRequest)
+            {
+                if (roleNumber == 2 || roleNumber == 3)
+                {
+                    transform.position += Vector3.up * 0.4f;
+                }
+                else
+                {
+                    if(animator != null) animator.SetBool("isHelloAnimation", false);
+                    if(animator != null) animator.SetBool("isYurayuraAnimation", false);
+                    if(animator != null) animator.SetBool("isDanceAnimation", false);
+                    currentEmote = 0;
+                    ExecuteJump();
+                    jogJumpRequest = false;
+                }
+                Joystick.GetComponent<JoystickScript>().isJumpRequest = false;
+            }
 
             if (jogJumpRequest)
             {
@@ -91,21 +134,20 @@ public class PlayerController : NetworkBehaviour
 
                 ExecuteJump();
 
-                // ★超重要：ジャンプ処理が終わったらフラグを下ろす（押しっぱなし暴発を防ぐ）
-                jogJumpRequest = false; 
+                jogJumpRequest = false;
             }
             
             if (Input.GetKey(KeyCode.Space))
             {
-                if (roleNumber == 2)
+                if (roleNumber == 2 || roleNumber == 3)
                 {
-                    transform.position += Vector3.up * 0.6f;
+                    transform.position += Vector3.up * 0.4f;
                 }
             }
         }
 
         float currentYVelocity = rb.velocity.y;
-        if (roleNumber == 2)
+        if (roleNumber == 2 || roleNumber == 3)
         {
             currentYVelocity = 0;
         }
@@ -119,9 +161,9 @@ public class PlayerController : NetworkBehaviour
     }
 
     // ジャンプの実体（FixedUpdateNetworkから呼び出します）
-    void ExecuteJump()
+    public void ExecuteJump()
     {
-        if (roleNumber != 2 && isStand && canMove)
+        if (roleNumber != 2 && roleNumber != 3 && isStand && canMove)
         {
             if (jumpCount < jumpCountLimit)
             {
@@ -138,6 +180,8 @@ public class PlayerController : NetworkBehaviour
                 Vector3 pushDirection = Vector3.zero;
                 Vector3 rayOrigin = transform.position + Vector3.down * 0.5f;
 
+                /*
+
                 if (Physics.Raycast(rayOrigin, transform.forward, out hit, 0.7f))
                 {
                     if (hit.collider.CompareTag("Stage"))
@@ -151,6 +195,8 @@ public class PlayerController : NetworkBehaviour
                     rb.AddForce(pushDirection * 25f, ForceMode.Impulse);
                 }
 
+                */
+
                 rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
 
                 jumpCount++;
@@ -161,23 +207,63 @@ public class PlayerController : NetworkBehaviour
 
     void Update()
     {
+        if(cooldownTimer > 0) cooldownTimer -= Time.deltaTime;
+        if(startCount < 0.1f)
+        {
+            startCount += Time.deltaTime;
+            return;
+        }
         if(!isRoleCheck && roleNumber != -1)
         {
+            if(animator != null)
+            {
+                Destroy(animator.gameObject);
+            }
             isRoleCheck = true;
+            roleNumber2 = roleNumber;
             if(roleNumber == 0)
             {
                 gameObject.layer = 6;
-                animator = Instantiate(blenderObj[0], gameObject.transform.position + new Vector3(0, 0.1f, 0), Quaternion.Euler(new Vector3(0, 180, 0)), gameObject.transform).GetComponent<Animator>();
+                int thiefSkinNumber2 = NetworkObj.GetComponent<StartFusion>().thiefSkinNumber;
+                animator = Instantiate(thiefBlenderObj[thiefSkinNumber2], gameObject.transform.position + new Vector3(0, 0.1f, 0),
+                gameObject.transform.rotation * Quaternion.Euler(new Vector3(0, 180, 0)), gameObject.transform).GetComponent<Animator>();
+                animator.gameObject.transform.localScale = new Vector3(0.3f, 0.15f, 0.3f);
+                animator.gameObject.SetActive(true);
             }
             if(roleNumber == 1)
             {
                 gameObject.layer = 7;
-                animator = Instantiate(blenderObj[1], gameObject.transform.position + new Vector3(0, 0.1f, 0), Quaternion.Euler(new Vector3(0, 180, 0)), gameObject.transform).GetComponent<Animator>();
+                int polliceSkinNumber2 = NetworkObj.GetComponent<StartFusion>().polliceSkinNumber;
+                animator = Instantiate(polliceBlenderObj[polliceSkinNumber2], gameObject.transform.position + new Vector3(0, 0.1f, 0),
+                gameObject.transform.rotation * Quaternion.Euler(new Vector3(0, 180, 0)), gameObject.transform).GetComponent<Animator>();
+                animator.gameObject.transform.localScale = new Vector3(0.3f, 0.15f, 0.3f);
+                animator.gameObject.SetActive(true);
             }
             if(roleNumber == 2)
             {
                 gameObject.layer = 8;
+                int count = 0;
+                foreach (Transform child in gameObject.transform)
+                {
+                    if(child.gameObject.name == "WorldCanvas")
+                    {
+                        parent = child.gameObject;
+                    }
+                }
+                foreach (Transform child in parent.transform)
+                {
+                    if(child.gameObject.GetComponent<Text>() != null)
+                    {
+                        child.gameObject.SetActive(false);
+                    }
+                }
             }
+
+            if(Joystick == null && GameObject.Find("Joystick") != null)
+            {
+                Joystick = GameObject.Find("Joystick").GetComponent<Image>();
+            }
+
             if(roleNumber == 2)
             {
                 speed = 18f;
@@ -186,7 +272,9 @@ public class PlayerController : NetworkBehaviour
             }
             else
             {
-                speed = 7f;
+                speed = 8f;
+                rb.useGravity = true;
+                GetComponent<BoxCollider>().enabled = true;
             }
             if(roleNumber == 1)
             {
@@ -200,10 +288,73 @@ public class PlayerController : NetworkBehaviour
                         }
                     } 
                 }
-                speed = 7.5f;
+                speed = 9f;
             }
-            GetComponent<Renderer>().material = materials[roleNumber];
+            if(roleNumber != 3) GetComponent<Renderer>().material = materials[roleNumber];
+            variableManager.isRoleChange = true;
         }
+        if(roleNumber == 3)
+        {
+            if(animator != null)
+            {
+                Destroy(animator.gameObject);
+                gameObject.layer = 8;
+                int count = 0;
+                foreach (Transform child in gameObject.transform)
+                {
+                    if(child.gameObject.name == "WorldCanvas")
+                    {
+                        parent = child.gameObject;
+                    }
+                }
+                foreach (Transform child in parent.transform)
+                {
+                    if(child.gameObject.GetComponent<Text>() != null)
+                    {
+                        child.gameObject.SetActive(false);
+                    }
+                }   
+            }
+        }
+        if(roleNumber != roleNumber2) isRoleCheck = false;
+        GameObject[] roleCubes = GameObject.FindGameObjectsWithTag("RoleChange");
+        foreach (GameObject cube in roleCubes)
+        {
+            if (cube != null)
+            {
+                float distance = Vector3.Distance(gameObject.transform.position, cube.transform.position);
+                if (distance <= 3f)
+                {
+                    if (cube.name.Contains("Thief")) // 例: キューブの名前が「ThiefCube」など
+                    {
+                        roleNumber = 0;
+                    }
+                    else if (cube.name.Contains("Pollice"))
+                    {
+                        roleNumber = 1;
+                    }
+                    else if (cube.name.Contains("Daruma")) // 例: キューブの名前が「DarumaCube」など
+                    {
+                        roleNumber = 2;
+                    }
+                    if (audioSource != null && cooldownTimer > 0)
+                    {
+                        audioSource.PlayOneShot(actionAudio, 0.7f);
+                        cooldownTimer = 1f;
+                    }
+                    variableManager.RequestSetActiveItem();
+                    break;
+                }
+            }
+        }
+
+        if(roleNumber == 3)
+        {
+            speed = 18f;
+            rb.useGravity = false;
+            GetComponent<BoxCollider>().enabled = false;
+        }
+
         cameraController = cameraObj.GetComponent<CameraController>();
         if (Object.HasStateAuthority)
         {
@@ -336,9 +487,9 @@ public class PlayerController : NetworkBehaviour
         }
         if(Input.GetKey(KeyCode.LeftShift))
         {
-            if(roleNumber == 2)
+            if(roleNumber == 2 || roleNumber == 3)
             {
-                transform.position += Vector3.down * 0.6f;
+                transform.position += Vector3.down * 0.4f;
             }
         }
         if(Input.GetMouseButton(1))
@@ -348,6 +499,14 @@ public class PlayerController : NetworkBehaviour
                 if(Input.GetKey(KeyCode.Alpha1))
                 {
                     missionSub = 0;
+                }
+                if(Input.GetKey(KeyCode.Alpha2))
+                {
+                    missionSub = 1;
+                }
+                if(Input.GetKey(KeyCode.Alpha3))
+                {
+                    missionSub = 2;
                 }
             }
         }
@@ -391,10 +550,190 @@ public class PlayerController : NetworkBehaviour
             }
         }
 
-        // カメラ切り替え用
-        if(roleNumber == 2)
+        if(variableManager.missionNumber == 2 && isMarked)
         {
-            var playerObjs = variableManager.PlayerObj;
+            roleCubes = GameObject.FindGameObjectsWithTag("Player");
+            foreach (GameObject cube in roleCubes)
+            {
+                if (cube != null)
+                {
+                    float distance = Vector3.Distance(gameObject.transform.position, cube.transform.position);
+                    if (distance <= 2.5f)
+                    {
+                        if (cube.name.Contains("Thief")) // 例: キューブの名前が「ThiefCube」など
+                        {
+                            roleNumber = 0;
+                        }
+                        else if (cube.name.Contains("Pollice"))
+                        {
+                            roleNumber = 1;
+                        }
+                        else if (cube.name.Contains("Daruma")) // 例: キューブの名前が「DarumaCube」など
+                        {
+                            roleNumber = 2;
+                        }
+                        variableManager.RequestSetActiveItem();
+                        break;
+                    }
+                }
+            }   
+        }
+
+        if (roleNumber == 2)
+        {
+            if (targetDaruma == null)
+            {
+                targetDaruma = GameObject.Find("daruma1(Clone)");
+            }
+            else
+            {
+                float backDistance = 5.0f;
+                Vector3 targetPosition = targetDaruma.transform.position;
+                Rigidbody darumaRb = targetDaruma.GetComponent<Rigidbody>();
+
+                if (darumaRb != null)
+                {
+                    Vector3 horizontalVelocity = new Vector3(darumaRb.velocity.x, 0f, darumaRb.velocity.z);
+
+                    if (horizontalVelocity.sqrMagnitude > 0.1f)
+                    {
+                        Vector3 moveDirection = horizontalVelocity.normalized;
+                        targetPosition.x -= moveDirection.x * backDistance;
+                        targetPosition.z -= moveDirection.z * backDistance;
+                    }
+                    else
+                    {
+                        Vector3 darumaForward = targetDaruma.transform.forward;
+                        darumaForward.y = 0f;
+                        darumaForward.Normalize();
+                        
+                        targetPosition.x -= darumaForward.x * backDistance;
+                        targetPosition.z -= darumaForward.z * backDistance;
+                    }
+                }
+
+                Vector3 directionToDaruma = targetDaruma.transform.position - transform.position;
+                float distanceToDaruma = directionToDaruma.magnitude;
+
+                // 強制ワープ
+                if (distanceToDaruma >= 20.0f)
+                {
+                    transform.position = targetPosition;
+                    
+                    Vector3 lookPos = targetDaruma.transform.position - transform.position;
+                    lookPos.y = 0f;
+                    if (lookPos != Vector3.zero)
+                    {
+                        transform.rotation = Quaternion.LookRotation(lookPos);
+                    }
+                    return; 
+                }
+
+                bool isBlocked = false;
+                if (Physics.Raycast(transform.position, directionToDaruma.normalized, out RaycastHit hit, distanceToDaruma))
+                {
+                    if (hit.collider.CompareTag(obstacleTag))
+                    {
+                        isBlocked = true;
+                    }
+                }
+
+                if (isBlocked)
+                {
+                    float targetYRotation = transform.eulerAngles.y + rotateSpeed * Time.deltaTime;
+                    transform.rotation = Quaternion.Euler(0f, targetYRotation, 0f);
+                }
+                else
+                {
+                    transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * followSpeed);
+                    
+                    Vector3 lookPos = targetDaruma.transform.position - transform.position;
+                    lookPos.y = 0f; 
+                    
+                    if (lookPos != Vector3.zero)
+                    {
+                        transform.rotation = Quaternion.LookRotation(lookPos);
+                    }
+                }   
+            }
+        }
+
+        if(missionSub != -1 && roleNumber == 2)
+        {
+            if(variableManager.missionSubNumber == -1)
+            {
+                if(missionSub == 0)
+                {
+                    variableManager.textString = "矢印キーを押してだるまを設置！";
+                    if(Input.GetKey(KeyCode.RightArrow)) SetMission(0, 0);
+                    if(Input.GetKey(KeyCode.LeftArrow)) SetMission(0, 1);
+                    if(Input.GetKey(KeyCode.UpArrow)) SetMission(0, 2);
+                    if(Input.GetKey(KeyCode.DownArrow)) SetMission(0, 3);
+                }
+                if(missionSub == 1)
+                {
+                    variableManager.textString = "矢印キーを押してだるま加速！";
+                    SetMission(1, 0);
+                }
+                if(missionSub == 2)
+                {
+                    List<GameObject> playerObjs = new List<GameObject>();
+                    foreach (var player in variableManager.PlayerObj)
+                    {
+                        if (player == null) continue;
+                        var nObj = player.GetComponent<NetworkObject>();
+                        if (nObj != null)
+                        {
+                            if (!nObj.HasStateAuthority) 
+                            {
+                                playerObjs.Add(player); // 自分以外ならリストに加える
+                            }
+                        }
+                    }
+                    variableManager.textString = "数字キーを押して呪うプレイヤーを選択！";
+                    int number = -1;
+                    if(Input.GetKeyDown(KeyCode.Alpha1))
+                    {
+                        if(Input.GetKey(KeyCode.LeftShift) && playerObjs.Count > 9) number = 9;
+                        else if(playerObjs.Count > 0) number = 0;
+                    }
+                    if(Input.GetKeyDown(KeyCode.Alpha2))
+                    {
+                        if(Input.GetKey(KeyCode.LeftShift) && playerObjs.Count > 10) number = 10;
+                        else if(playerObjs.Count > 1) number = 1;
+                    }
+                    if(Input.GetKeyDown(KeyCode.Alpha3))
+                    {
+                        if(Input.GetKey(KeyCode.LeftShift) && playerObjs.Count > 11) number = 11;
+                        else if(playerObjs.Count > 2) number = 2;
+                    }
+                    if(Input.GetKeyDown(KeyCode.Alpha4)) if(playerObjs.Count > 3) number = 3;
+                    if(Input.GetKeyDown(KeyCode.Alpha5)) if(playerObjs.Count > 4) number = 4;
+                    if(Input.GetKeyDown(KeyCode.Alpha6)) if(playerObjs.Count > 5) number = 5;
+                    if(Input.GetKeyDown(KeyCode.Alpha7)) if(playerObjs.Count > 6) number = 6;
+                    if(Input.GetKeyDown(KeyCode.Alpha8)) if(playerObjs.Count > 7) number = 7;
+                    if(Input.GetKeyDown(KeyCode.Alpha9)) if(playerObjs.Count > 8) number = 8;
+                    
+                    if(number != null) SetMission(2, number);
+                }   
+            }
+        }
+        else if(roleNumber == 2 || roleNumber == 3)
+        {
+            List<GameObject> playerObjs = new List<GameObject>();
+            foreach (var player in variableManager.PlayerObj)
+            {
+                if (player == null) continue;
+                var nObj = player.GetComponent<NetworkObject>();
+                if (nObj != null)
+                {
+                    if (!nObj.HasStateAuthority) 
+                    {
+                        playerObjs.Add(player); // 自分以外ならリストに加える
+                    }
+                }
+            }
+
             if(cameraNumber != -1 && cameraNumber < playerObjs.Count)
             {
                 transform.position = playerObjs[cameraNumber].transform.position;
@@ -413,6 +752,8 @@ public class PlayerController : NetworkBehaviour
             {
                 cameraNumber = -1;
             }
+
+            if(Input.GetMouseButton(1)) return;
 
             if(Input.GetKeyDown(KeyCode.Alpha1))
             {
@@ -435,18 +776,6 @@ public class PlayerController : NetworkBehaviour
             if(Input.GetKeyDown(KeyCode.Alpha7)) { if(playerObjs.Count > 6) cameraNumber = cameraNumber == 6 ? -1 : 6; }
             if(Input.GetKeyDown(KeyCode.Alpha8)) { if(playerObjs.Count > 7) cameraNumber = cameraNumber == 7 ? -1 : 7; }
             if(Input.GetKeyDown(KeyCode.Alpha9)) { if(playerObjs.Count > 8) cameraNumber = cameraNumber == 8 ? -1 : 8; }
-        }
-
-        if(missionSub != -1 && variableManager.missionSubNumber == -1 && roleNumber == 2)
-        {
-            if(missionSub == 0)
-            {
-                variableManager.textString = "Push any ArrowKey to set DARUMA";
-                if(Input.GetKey(KeyCode.RightArrow)) { SetMission(0, 0); }
-                if(Input.GetKey(KeyCode.LeftArrow)) { SetMission(0, 1); }
-                if(Input.GetKey(KeyCode.UpArrow)) { SetMission(0, 2); }
-                if(Input.GetKey(KeyCode.DownArrow)) { SetMission(0, 3); }
-            }
         }
     }
 
@@ -501,8 +830,8 @@ public class PlayerController : NetworkBehaviour
             {
                 if (audioSource != null) audioSource.PlayOneShot(badAction);
                 stateNumber = 1;
-                transform.position = prisonTransform.transform.position;
                 variableManager.prisonBreak = false;
+                Invoke("MoveToPrison", 0.2f);
             }
         }
         if(collision.gameObject.CompareTag("Prison"))
@@ -512,6 +841,21 @@ public class PlayerController : NetworkBehaviour
                 variableManager.prisonBreak = true;
             }
         }
+        if(collision.gameObject.CompareTag("PolliceObject"))
+        {
+            if(roleNumber == 0)
+            {
+                if (audioSource != null) audioSource.PlayOneShot(badAction);
+                stateNumber = 1;
+                variableManager.prisonBreak = false;
+                Invoke("MoveToPrison", 0.2f);
+            }
+        }
+    }
+
+    void MoveToPrison()
+    {
+        transform.position = prisonTransform.transform.position;
     }
 
     void OnTriggerEnter(Collider collider)
@@ -543,7 +887,7 @@ public class PlayerController : NetworkBehaviour
                     Vector3 vel = rb.velocity;
                     vel.y = 0;
                     rb.velocity = vel;
-                    rb.AddForce(Vector3.up * jumpForce * 1.5f, ForceMode.Impulse);
+                    rb.AddForce(Vector3.up * jumpForce * 1.7f, ForceMode.Impulse);
                     isStand = false;
                     myCollider.sharedMaterial = noFriction; 
                 }
@@ -559,6 +903,58 @@ public class PlayerController : NetworkBehaviour
                     if(animator != null) animator.SetBool("isJumpAnimation", true);
                     bigJump = true;
                     Vector3 vel = rb.velocity;
+                    vel.y = 0;
+                    rb.velocity = vel;
+                    rb.AddForce(Vector3.up * jumpForce * 2.2f, ForceMode.Impulse);
+                    isStand = false;
+                    myCollider.sharedMaterial = noFriction; 
+                }
+            }
+        }
+        if(collider.gameObject.CompareTag("RoleChange"))
+        {
+            if(collider.name == "ToThief")
+            {
+                roleNumber = 0;
+            }
+            if(collider.name == "ToPollice")
+            {
+                roleNumber = 1;
+            }
+            if(collider.name == "ToDaruma")
+            {
+                roleNumber = 2;
+            }
+            if (audioSource != null) audioSource.PlayOneShot(actionAudio, 0.7f);
+            variableManager.isSetName = 0;
+            variableManager.RequestSetActiveItem();
+        }
+    }
+    
+    void OnTriggerStay(Collider collider)
+    {
+        if(collider.gameObject.CompareTag("Jump"))
+        {
+            if(roleNumber != 2)
+            {
+                Vector3 vel = rb.velocity;
+                if(bigJump && vel.y < 0)
+                {
+                    vel.y = 0;
+                    rb.velocity = vel;
+                    rb.AddForce(Vector3.up * jumpForce * 1.7f, ForceMode.Impulse);
+                    isStand = false;
+                    myCollider.sharedMaterial = noFriction; 
+                }
+            }
+        }
+        if(collider.gameObject.CompareTag("Jump2"))
+        {
+            if(roleNumber != 2)
+            {
+                Vector3 vel = rb.velocity;
+                if(bigJump && vel.y < 0)
+                {
                     vel.y = 0;
                     rb.velocity = vel;
                     rb.AddForce(Vector3.up * jumpForce * 2.2f, ForceMode.Impulse);
@@ -586,6 +982,8 @@ public class PlayerController : NetworkBehaviour
 
     public override void Spawned()
     {
+        stateNumber = 0;
+        isMarked = false;
         Camera cam = GetComponentInChildren<Camera>(true);
         if (!Object.HasInputAuthority)
         {

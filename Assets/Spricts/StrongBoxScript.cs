@@ -19,8 +19,12 @@ public class StrongBoxScript : MonoBehaviour
     List<PlayerController> playerController = new List<PlayerController>();
     EnemyPlayerController[] enemyPlayerController;
     VariableManager variableManager;
-    float timeLimit = 2.5f;
+    float timeLimit = 1.5f;
     float timeCount;
+    int audioCount;
+    float cooldownTimer = 0f;
+    bool audioBool = false;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -41,6 +45,8 @@ public class StrongBoxScript : MonoBehaviour
 
     void Update()
     {
+        if(audioCount > 5) cooldownTimer -= Time.deltaTime;
+        if(cooldownTimer < 0) audioCount = 0;
         timeCount += Time.deltaTime;
         if(action && !isOpen)
         {
@@ -51,10 +57,12 @@ public class StrongBoxScript : MonoBehaviour
             {
                 GameObject Obj = Objects[i];
                 Obj.GetComponent<NavMeshObstacle>().enabled = false;
+                Obj.GetComponent<BoxCollider>().enabled = false;
                 foreach (GameObject player in PlayerObj)
                 {
                     if (player == null) continue;
 
+                    /*
                     foreach (var objCol in Obj.GetComponents<Collider>())
                     {
                         foreach (var playerCol in player.GetComponents<Collider>())
@@ -65,12 +73,23 @@ public class StrongBoxScript : MonoBehaviour
                         {
                             Physics.IgnoreCollision(objCol, gemCol);
                         }
-                    }   
+                    }
+                    */
                 }
 
                 rb = Obj.GetComponent<Rigidbody>();
                 rb.constraints = RigidbodyConstraints.None;
-                rb.AddForce(Vector3.up * 50f, ForceMode.Impulse);
+                float random = Random.Range(-80f, 80f);
+                float random2 = Random.Range(-80f, 80f);
+                float random3 = Random.Range(80f, 150f);
+                Vector3 targetVector3 = new Vector3(random, random3, random2);
+                rb.AddForce(targetVector3, ForceMode.Impulse);
+
+                float rotX = Random.Range(-1f, 1f);
+                float rotY = Random.Range(-1f, 1f);
+                float rotZ = Random.Range(-1f, 1f);
+                Vector3 torqueVector = new Vector3(rotX, rotY, rotZ);
+                rb.AddTorque(torqueVector, ForceMode.Impulse);
             }
         }
         if(isOpen && timeCount >= timeLimit)
@@ -80,6 +99,7 @@ public class StrongBoxScript : MonoBehaviour
                 GameObject Obj = Objects[i];
                 Obj.SetActive(false);
             }
+            gameObject.GetComponent<BoxCollider>().enabled = false;
         }
     }
 
@@ -90,7 +110,12 @@ public class StrongBoxScript : MonoBehaviour
             if(other.gameObject.GetComponent<PlayerController>().roleNumber == 0)
             {
                 action = true;
-                audioSource.PlayOneShot(openStrongBox);
+                if(!audioBool && audioCount <= 5)
+                {
+                    audioCount ++;
+                    audioSource.PlayOneShot(openStrongBox);
+                    cooldownTimer = 3f;
+                }
             }
         }
     }

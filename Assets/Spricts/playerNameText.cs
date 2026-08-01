@@ -1,11 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
+using TMPro;
 
 public class playerNameText : MonoBehaviour
 {
-    [SerializeField] Text myText;
+    [SerializeField] TextMeshProUGUI myText;
 
     void Start()
     {

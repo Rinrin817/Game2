@@ -49,7 +49,7 @@ public class GemScript : MonoBehaviour
             }
             */
             timeCount += Time.deltaTime;
-            if(timeCount >= 5f)
+            if(timeCount >= 1.5f)
             {
                 Destroy(this.gameObject);
             }
