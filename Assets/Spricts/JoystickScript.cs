@@ -10,7 +10,7 @@ public class JoystickScript : MonoBehaviour, IPointerDownHandler, IDragHandler, 
     public bool isMoving;
     public bool isJumpRequest;
     [SerializeField] Image dragImage;
-    float maxDistance = 13f;
+    float maxDistance = 18f;
     Vector2 centerPosition;
     public int pointerId = -1;
 

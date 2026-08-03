@@ -6,8 +6,12 @@ using UnityEngine;
 public class HelpScript : MonoBehaviour
 {
     [SerializeField] GameObject[] ruleObj;
+    [SerializeField] AudioSource audioSource;
+    [SerializeField] AudioClip openAudio;
+    [SerializeField] AudioClip closeAudio;
     int count = 0;
     int count2 = 0;
+    int count3 = 0;
     // Start is called before the first frame update
     void Start()
     {
@@ -36,6 +40,7 @@ public class HelpScript : MonoBehaviour
         for(int i = 0; i < ruleObj.Length; i ++)
         {
             ruleObj[i].SetActive(true);
+            audioSource.PlayOneShot(openAudio, 0.5f);
         }
     }
 }

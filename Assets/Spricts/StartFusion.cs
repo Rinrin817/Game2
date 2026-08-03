@@ -8,8 +8,6 @@ using TMPro;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine.Audio;
-using System.Runtime.CompilerServices;
-using System.Dynamic;
 
 public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 {
@@ -30,6 +28,14 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] NetworkObject networkGameStatePrefab;
     [SerializeField] AudioSource homeBGMSource;
     [SerializeField] AudioSource battleBGMSource;
+    [SerializeField] AudioClip homeButtonAudio;
+    [SerializeField] AudioClip openGacha;
+    [SerializeField] AudioClip openGacha2;
+    [SerializeField] AudioClip openGacha3;
+    [SerializeField] AudioClip openGacha4;
+    [SerializeField] AudioClip openAudio;
+    [SerializeField] AudioClip closeAudio;
+    [SerializeField] AudioClip typingAudio;
     [SerializeField] Image[] ONOFFImage;
     [SerializeField] Image NoticeImage;
     [SerializeField] Canvas[] CanvasObjs;
@@ -38,6 +44,10 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] GameObject[] ItemButton;
     [SerializeField] Transform buttonContainer;
     public int nowItemID;
+    Button Stage1Button;
+    Button Stage2Button;
+    GameObject StageChangeImage;
+    [SerializeField] AudioSource audioSource;
     Text roomText;
     public int modePlayerCount;
     int lastGachaCount = 0;
@@ -52,6 +62,9 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
     float lastPropertyUpdateTime;
     bool gachaFinish;
     public NetworkGameState State { get; set; }
+    public int stageNumber;
+    Transform childTransform;
+    GameObject parentObj;
 
     public int thiefSkinNumber
     {
@@ -88,6 +101,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
     void Awake()
     {
+        stageNumber = 1;
         DontDestroyOnLoad(gameObject);
         runner.AddCallbacks(this);
         homeBGMSource.Play();
@@ -249,8 +263,27 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
             {
                 if(GameObject.Find("RoomText") != null) GameObject.Find("RoomText").GetComponent<Text>().text = "1/1";
             }
-            
-            return;
+            //return;
+        }
+        if(GameObject.Find("StageChange") != null)
+        {
+            GameObject.Find("StageChange").GetComponent<Button>().onClick.RemoveAllListeners();
+            GameObject.Find("StageChange").GetComponent<Button>().onClick.AddListener(ChangeStage);
+        }
+        if(GameObject.Find("BaseCanvas") != null && Stage1Button == null)
+        {
+            Debug.Log("try");
+            parentObj = GameObject.Find("BaseCanvas");
+            childTransform = parentObj.transform.Find("StageChangeImage");
+            StageChangeImage = childTransform.gameObject;
+            childTransform = StageChangeImage.transform.Find("Stage1");
+            Stage1Button = childTransform.gameObject.GetComponent<Button>();
+            Stage1Button.onClick.RemoveAllListeners();
+            Stage1Button.onClick.AddListener(ChangeToStage1);
+            childTransform = StageChangeImage.transform.Find("Stage2");
+            Stage2Button = childTransform.gameObject.GetComponent<Button>();
+            Stage2Button.onClick.RemoveAllListeners();
+            Stage2Button.onClick.AddListener(ChangeToStage2);
         }
 
         // Debug.Log(State != null && State.Object != null && State.Object.IsValid);
@@ -269,9 +302,9 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
         }
         */
         if(cameraObj != null) cameraObj.transform.rotation *= Quaternion.Euler(0f, 0.05f, 0f);
-        for(int i = 0; i < gemCountText.Length; i ++) gemCountText[i].text = gemCount.ToString();
         if (modeText != null && explainText != null)
         {
+            for(int i = 0; i < gemCountText.Length; i ++) gemCountText[i].text = gemCount.ToString();
             if(modeNumber == 0)
             {
                 modeText.text = "1人プレイ";
@@ -321,7 +354,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
                 Debug.Log("Master: 条件達成。2秒後にAllPlayerStartGameを実行します。");
                 
                 // 連打を防ぐため、Invokeで一呼吸置いてから実行します
-                Invoke("AllPlayerStartGame", 2f);
+                Invoke("AllPlayerStartGame", 5f);
             }
         }
 
@@ -341,6 +374,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
     void SetupItemButtons()
     {
+        audioSource.PlayOneShot(homeButtonAudio, 0.5f);
         Button[] buttons = buttonContainer.GetComponentsInChildren<Button>(true);
 
         for (int i = 0; i < buttons.Length; i++)
@@ -361,13 +395,53 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
     void AllPlayerStartGame()
     {
+        DecideStageByMajority();
+
         runner.LoadScene(SceneRef.FromIndex(1));
         homeBGMSource.Stop();
         battleBGMSource.Play();
     }
 
+    public void DecideStageByMajority()
+    {
+        NetworkPlayerInfo[] allPlayers = FindObjectsByType<NetworkPlayerInfo>(FindObjectsSortMode.None);
+        if (allPlayers.Length == 0) return;
+
+        if (!allPlayers[0].Runner.IsSharedModeMasterClient)
+        {
+            Debug.LogWarning("マスタークライアントのみがステージを決定できます。");
+            return;
+        }
+        Dictionary<int, int> stageVotes = new Dictionary<int, int>();
+        foreach (var player in allPlayers)
+        {
+            int vote = player.desiredStage;
+
+            if (stageVotes.ContainsKey(vote))
+            {
+                stageVotes[vote]++;
+            }
+            else
+            {
+                stageVotes[vote] = 1;
+            }
+        }
+        int winningStage = stageVotes.OrderByDescending(x => x.Value).First().Key;
+        NetworkPlayerInfo myPlayer = allPlayers.FirstOrDefault(p => p.HasStateAuthority);
+        
+        if (myPlayer != null)
+        {
+            myPlayer.RPC_SyncStageNumber(winningStage);
+        }
+        else
+        {
+            Debug.LogError("自分の NetworkPlayerInfo が見つかりませんでした。");
+        }
+    }
+
     public void ChangeMode(bool isRight)
     {
+        audioSource.PlayOneShot(homeButtonAudio, 0.5f);
         if(isRight)
         {
             if(modeNumber == 4) modeNumber = 0;
@@ -382,6 +456,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
     public void ChangeThiefSkin()
     {
+        audioSource.PlayOneShot(homeButtonAudio, 0.5f);
         if(thiefSkinNumber == 1) thiefSkinNumber = 0;
         else thiefSkinNumber ++;
         if (skinObj != null)
@@ -404,6 +479,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
             gachaCameraObj.gameObject.SetActive(false);
             CanvasObjs[0].gameObject.SetActive(true);
             CanvasObjs[1].gameObject.SetActive(false);
+            audioSource.PlayOneShot(closeAudio, 0.5f);
         }
         else
         {
@@ -411,6 +487,17 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
             gachaCameraObj.SetActive(true);
             CanvasObjs[0].gameObject.SetActive(false);
             CanvasObjs[1].gameObject.SetActive(true);
+            audioSource.PlayOneShot(openAudio, 0.5f);
+        }
+    }
+
+    public void TypingCharacter(TMP_InputField inputField)
+    {
+        if (inputField != null && !string.IsNullOrWhiteSpace(inputField.text))
+        {
+            audioSource.pitch = Random.Range(0.7f, 1.3f);
+            audioSource.PlayOneShot(typingAudio);
+            audioSource.pitch = 1f;
         }
     }
 
@@ -525,6 +612,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
     
     public void OneOpen()
     {
+        audioSource.PlayOneShot(openGacha, 0.3f);
         if (gemCount < 1) return;
         lastGachaCount = 1;
         int resultNumber = GachaResult();
@@ -540,6 +628,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
     public void TenOpen()
     {
+        audioSource.PlayOneShot(openGacha, 0.3f);
         if (gemCount < 10) return;
         lastGachaCount = 10;
         for (int i = 0; i < 10; i++)
@@ -606,13 +695,17 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
                     int resultNumber = Items[itemResultIndex];
                     if (resultNumber < 15)       delay = 0.05f; // コモン
                     else if (resultNumber < 23)  delay = 0.10f; // レア
-                    else if (resultNumber < 28)  delay = 0.25f; // スーパーレア
+                    else if (resultNumber < 28)  delay = 0.4f; // スーパーレア
                     else if (resultNumber < 33)  delay = 1.00f; // ウルトラレア
                     else                         delay = 2.00f; // レジェンド
                 }
 
                 yield return new WaitForSeconds(delay); // 表示前の溜め
                 itemImage[0].gameObject.SetActive(true);
+                audioSource.PlayOneShot(openGacha);
+                if(delay >= 0.4f) audioSource.PlayOneShot(openGacha2);
+                if(delay >= 1f) audioSource.PlayOneShot(openGacha3);
+                if(delay >= 2f) audioSource.PlayOneShot(openGacha4);
             }
             gachaFinish = true;
         }
@@ -635,7 +728,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
                         // レア度が高くなるにつれて待ち時間を長く設定
                         if (resultNumber < 15)       delay = 0.05f; // コモン
                         else if (resultNumber < 23)  delay = 0.10f; // レア
-                        else if (resultNumber < 28)  delay = 0.25f; // スーパーレア
+                        else if (resultNumber < 28)  delay = 0.4f; // スーパーレア
                         else if (resultNumber < 33)  delay = 1.00f; // ウルトラレア
                         else                         delay = 2.00f; // レジェンド
                     }
@@ -645,17 +738,92 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
                     // ② カード/画像を表示
                     itemImage[targetIndex].gameObject.SetActive(true);
+                    audioSource.PlayOneShot(openGacha);
+                    if(delay >= 0.4f) audioSource.PlayOneShot(openGacha2);
+                    if(delay >= 1f) audioSource.PlayOneShot(openGacha3);
+                    if(delay >= 2f) audioSource.PlayOneShot(openGacha4);
 
                     // ③ 表示後の余韻（表示を確認させる時間）
-                    yield return new WaitForSeconds(delay * 0.5f);
+                    yield return new WaitForSeconds(delay * 0.7f);
                 }
             }
             gachaFinish = true;
         }
     }
 
+    public void ChangeStage()
+    {
+        audioSource.PlayOneShot(homeButtonAudio, 0.5f);
+        childTransform = StageChangeImage.transform.Find("Stage1");
+        if(StageChangeImage.activeSelf) StageChangeImage.SetActive(false);
+        else StageChangeImage.SetActive(true);
+    }
+
+    public void ChangeToStage1()
+    {
+        audioSource.PlayOneShot(homeButtonAudio, 0.5f);
+        NetworkPlayerInfo[] allPlayers = FindObjectsByType<NetworkPlayerInfo>(FindObjectsSortMode.None);
+        foreach (var player in allPlayers)
+        {
+            if (player.HasStateAuthority)
+            {
+                player.desiredStage = 1;
+            }
+        }
+
+        GameObject Stage1Obj = null;
+        GameObject Stage2Obj = null;   
+        GameObject allStagesObj = GameObject.Find("AllStages");
+        childTransform = allStagesObj.transform.Find("Stage1");
+        Stage1Obj = childTransform.gameObject;
+        childTransform = allStagesObj.transform.Find("Stage2");
+        Stage2Obj = childTransform.gameObject;
+        Stage1Obj.SetActive(true);
+        Stage2Obj.SetActive(false);
+        childTransform = GameObject.Find("BaseCanvas").transform.Find("StageChangeImage");
+        parentObj = childTransform.gameObject;
+        childTransform = parentObj.transform.Find("Stage1Image");
+        GameObject Stage1Image = childTransform.gameObject;
+        Stage1Image.SetActive(true);
+        childTransform = parentObj.transform.Find("Stage2Image");
+        GameObject Stage2Image = childTransform.gameObject;
+        Stage2Image.SetActive(false);
+    }
+
+    public void ChangeToStage2()
+    {
+        audioSource.PlayOneShot(homeButtonAudio, 0.5f);
+        NetworkPlayerInfo[] allPlayers = FindObjectsByType<NetworkPlayerInfo>(FindObjectsSortMode.None);
+        foreach (var player in allPlayers)
+        {
+            if (player.HasStateAuthority)
+            {
+                player.desiredStage = 2;
+            }
+        }
+
+        GameObject Stage1Obj = null;
+        GameObject Stage2Obj = null;   
+        GameObject allStagesObj = GameObject.Find("AllStages");
+        childTransform = allStagesObj.transform.Find("Stage1");
+        Stage1Obj = childTransform.gameObject;
+        childTransform = allStagesObj.transform.Find("Stage2");
+        Stage2Obj = childTransform.gameObject;
+        Stage1Obj.SetActive(false);
+        Stage2Obj.SetActive(true);  
+        childTransform = GameObject.Find("BaseCanvas").transform.Find("StageChangeImage");
+        parentObj = childTransform.gameObject;
+        childTransform = parentObj.transform.Find("Stage1Image");
+        GameObject Stage1Image = childTransform.gameObject;
+        Stage1Image.SetActive(false);
+        childTransform = parentObj.transform.Find("Stage2Image");
+        GameObject Stage2Image = childTransform.gameObject;
+        Stage2Image.SetActive(true);
+    }
+
     public void CloseGachaResult()
     {
+        audioSource.PlayOneShot(closeAudio, 0.5f);
         if(gachaFinish)
         {
             CanvasObjs[1].gameObject.SetActive(true);
@@ -673,6 +841,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
     public void ChangePolliceSkin()
     {
+        audioSource.PlayOneShot(homeButtonAudio, 0.5f);
         if(polliceSkinNumber == 1) polliceSkinNumber = 0;
         else polliceSkinNumber ++;
         if (skinObj != null)
@@ -688,28 +857,47 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
     {
         CanvasObjs[2].gameObject.SetActive(false);
         CanvasObjs[3].gameObject.SetActive(false);
-        if(NoticeImage.gameObject.activeSelf) NoticeImage.gameObject.SetActive(false);
-        else NoticeImage.gameObject.SetActive(true);
+        if(NoticeImage.gameObject.activeSelf)
+        {
+            NoticeImage.gameObject.SetActive(false);
+            audioSource.PlayOneShot(closeAudio, 0.5f);
+        }
+        else
+        {
+            NoticeImage.gameObject.SetActive(true);
+            audioSource.PlayOneShot(openAudio, 0.5f);
+        }
     }
 
     public void OpenRocker()
     {
+        audioSource.PlayOneShot(homeButtonAudio, 0.5f);
         NoticeImage.gameObject.SetActive(false);
         CanvasObjs[2].gameObject.SetActive(false);
-        if(CanvasObjs[3].gameObject.activeSelf) CanvasObjs[3].gameObject.SetActive(false);
-        else CanvasObjs[3].gameObject.SetActive(true);
+        if(CanvasObjs[3].gameObject.activeSelf)
+        {
+            CanvasObjs[3].gameObject.SetActive(false);
+            audioSource.PlayOneShot(closeAudio, 0.5f);
+        }
+        else
+        {
+            CanvasObjs[3].gameObject.SetActive(true);
+            audioSource.PlayOneShot(openAudio, 0.5f);
+        }
     }
 
     public void SetItem(int buttonID)
     {
         if (nowItemID == buttonID)
         {
+            audioSource.PlayOneShot(closeAudio, 0.5f);
             bool isActive = ItemObjs[buttonID].activeSelf;
             ItemObjs[buttonID].SetActive(!isActive);
             if (isActive) nowItemID = -1;
         }
         else
         {
+            audioSource.PlayOneShot(homeButtonAudio, 0.5f);
             if (nowItemID != -1) ItemObjs[nowItemID].SetActive(false);
             ItemObjs[buttonID].SetActive(true);
             nowItemID = buttonID;
@@ -756,6 +944,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
     public async void LeaveRoom()
     {
+        audioSource.PlayOneShot(closeAudio, 0.5f);
         if (isLeaving) return;
         isLeaving = true;
 

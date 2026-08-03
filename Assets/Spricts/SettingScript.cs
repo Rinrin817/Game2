@@ -16,6 +16,9 @@ public class SettingScript : MonoBehaviour
     [SerializeField] Button BGMImage;
     [SerializeField] Image XSensivitiyImage;
     [SerializeField] Image YSensivitiyImage;
+    [SerializeField] AudioSource audioSource;
+    [SerializeField] AudioClip openAudio;
+    [SerializeField] AudioClip closeAudio;
     
     void Awake()
     {
@@ -42,6 +45,7 @@ public class SettingScript : MonoBehaviour
             BGMImage.gameObject.SetActive(false);
             XSensivitiyImage.gameObject.SetActive(false);
             YSensivitiyImage.gameObject.SetActive(false);
+            audioSource.PlayOneShot(closeAudio, 0.5f);
         }
         else
         {
@@ -50,6 +54,7 @@ public class SettingScript : MonoBehaviour
             BGMImage.gameObject.SetActive(true);
             XSensivitiyImage.gameObject.SetActive(true);
             YSensivitiyImage.gameObject.SetActive(true);   
+            audioSource.PlayOneShot(openAudio, 0.5f);
         }
     }
 

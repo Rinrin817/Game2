@@ -7,6 +7,7 @@ public class NetworkPlayerInfo : NetworkBehaviour
     [Networked] public NetworkString<_16> PlayerName { get; set; }
     [Networked] public int SkinType { get; set; } // スキンの種類番号（あれば）
     [Networked] public int itemID { get; set; }
+    [Networked] public int desiredStage { get; set; }
 
     // このオブジェクトの所有者のPlayerRefを保持
     [Networked] public PlayerRef OwnerRef { get; set; }
@@ -45,5 +46,17 @@ public class NetworkPlayerInfo : NetworkBehaviour
         // 退室時にもUIを更新する
         LobbyUIManager ui = FindFirstObjectByType<LobbyUIManager>();
         if (ui != null) ui.UpdateLobbyUI();
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.All)]
+    public void RPC_SyncStageNumber(int winningStage)
+    {
+        // シーン内の Startfusion を探して stageNumber を直接書き換える
+        StartFusion startFusion = FindFirstObjectByType<StartFusion>();
+        if (startFusion != null)
+        {
+            startFusion.stageNumber = winningStage;
+            Debug.Log($"[RPC] Startfusion の stageNumber を {winningStage} に同期しました！");
+        }
     }
 }

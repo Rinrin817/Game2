@@ -67,6 +67,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     bool hasSpawned = false;
     bool itemBool = false;
     int continuePlayerCount;
+    public Transform targetPrisonObj;
     PlayerController playerControllers2;
     NetworkRunner runner;
     List<int> roles = new List<int>();
@@ -349,13 +350,19 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
 
     void SetNameText()
     {
-        if (PlayerObj.Count != playerCount) return;
+        Debug.Log("hjjio");
+        if (PlayerObj.Count != playerCount)
+        {
+            Debug.Log("setnametext. retrun");
+            return;
+        }
 
         NetworkPlayerInfo[] rawPlayers = FindObjectsByType<NetworkPlayerInfo>(FindObjectsSortMode.None);
 
         for (int i = 0; i < playerCount; i++)
         {
             if (imageObj[i].TryGetComponent(out CanvasGroup canvasGroup))
+                Debug.Log(i.ToString());
                 canvasGroup.alpha = 1f;
 
             if (i >= PlayerObj.Count)
@@ -416,22 +423,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         }
         */
         DynamicGI.UpdateEnvironment();
-        stageNumber = 1;
-        Transform targetPrisonObj = prisonObj[stageNumber].transform;
-        prisonObjects = new GameObject[targetPrisonObj.childCount];
-        for (int i = 0; i < targetPrisonObj.childCount; i++)
-        {
-            prisonObjects[i] = targetPrisonObj.GetChild(i).gameObject;
-        }
-        if(StartButton.playerCountStatic != 5 && StartButton.playerCountStatic != 9 && StartButton.playerCountStatic != 13)
-        {
-            playerCount = 5;
-        }
-        else
-        {
-            playerCount = StartButton.playerCountStatic;
-        }
-
+        
         prisonBreak = true;
         previousPrisonBreak = true;
         isFinish = -1;
@@ -481,6 +473,46 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         NetworkRunner runner = FindFirstObjectByType<NetworkRunner>();
         if (runner == null) return;
         if (runner.gameObject.GetComponent<StartFusion>() == null) return;
+
+        stageNumber = runner.gameObject.GetComponent<StartFusion>().stageNumber;
+        
+        GameObject Stage1Obj = null;
+        GameObject Stage2Obj = null;   
+        GameObject parentObj = GameObject.Find("AllStages");
+        Transform childTransform = parentObj.transform.Find("Stage1");
+        Stage1Obj = childTransform.gameObject;
+        childTransform = parentObj.transform.Find("Stage2");
+        Stage2Obj = childTransform.gameObject;
+        if(stageNumber == 0)
+        {
+            stageNumber = 1;
+        }
+        if(stageNumber == 1)
+        {
+            Stage1Obj.SetActive(true);
+            Stage2Obj.SetActive(false);
+        }
+        if(stageNumber == 2)
+        {
+            Stage1Obj.SetActive(false);
+            Stage2Obj.SetActive(true);
+        }
+        targetPrisonObj = prisonObj[stageNumber - 1].transform;
+        Debug.Log(prisonObj[stageNumber - 1].transform.position.ToString());
+
+        prisonObjects = new GameObject[targetPrisonObj.childCount];
+        for (int i = 0; i < targetPrisonObj.childCount; i++)
+        {
+            prisonObjects[i] = targetPrisonObj.GetChild(i).gameObject;
+        }
+        if(StartButton.playerCountStatic != 5 && StartButton.playerCountStatic != 9 && StartButton.playerCountStatic != 13)
+        {
+            playerCount = 5;
+        }
+        else
+        {
+            playerCount = StartButton.playerCountStatic;
+        }
 
         if(playerController.roleNumber == 2)
         {
@@ -549,7 +581,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         if (PlayerObj.Count != playerCount)
         {
             playerCount = runner.ActivePlayers.Count();
-            return;   
+            // return;   
         }
 
         isSetName ++;
@@ -724,6 +756,8 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         goalPlayerCount = 0;
         continuePlayerCount = 0;
 
+        if(isLeaving) return;
+
         for(int i = 0; i < playerCount; i ++)
         {
             playerControllers2 = PlayerObj[i].GetComponent<PlayerController>();
@@ -733,7 +767,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 {
                     prisonPlayerCount ++;
                 }
-                else if(PlayerObj[i].activeSelf == false)
+                else if(playerControllers2.roleNumber == 3)
                 {
                     goalPlayerCount ++;
                 }
@@ -742,8 +776,12 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                     continuePlayerCount ++;
                 }
             }
+            else
+            {
+                goalPlayerCount ++;
+            }
         }
-        if((playerCount == 5 && continuePlayerCount == 2) || (playerCount == 9 && continuePlayerCount == 3) || (playerCount == 13 && continuePlayerCount == 4))
+        if((playerCount == 1 && continuePlayerCount == 0) || (playerCount == 5 && continuePlayerCount == 2) || (playerCount == 9 && continuePlayerCount == 3) || (playerCount == 13 && continuePlayerCount == 4))
         {
             if(playerController.roleNumber == 1)
             {
@@ -808,6 +846,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     {
         if (isLeaving) return;
         isLeaving = true;
+        runner = FindFirstObjectByType<NetworkRunner>();
 
         runner.gameObject.GetComponent<StartFusion>().gameStarted = false;
         runner.gameObject.GetComponent<StartFusion>().State = null;
@@ -816,8 +855,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         {
             await runner.Shutdown();
         }
-
-        SceneManager.LoadScene(1);
+        SceneManager.LoadScene(0);
     }
 
     void setTextString()

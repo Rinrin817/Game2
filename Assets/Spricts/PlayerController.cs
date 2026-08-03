@@ -43,7 +43,7 @@ public class PlayerController : NetworkBehaviour
     [Networked] public int currentEmote { get; set; } = 0;
     [Networked] public bool isMarked { get; set; } = false;
     public bool canMove;
-    Transform prisonTransform;
+    Transform prisonTransform = null;
     CameraController cameraController;
     VariableManager variableManager;
     GameObject collisionObj;
@@ -76,7 +76,6 @@ public class PlayerController : NetworkBehaviour
         ManagerObj = FindFirstObjectByType<VariableManager>().gameObject;
         NetworkObj = GameObject.Find("NetworkRunner");
         prisonObj = GameObject.FindGameObjectsWithTag("Prison");
-        prisonTransform = GameObject.Find("Prison").transform;
         cameraNumber = -1;
         audioSource = GetComponent<AudioSource>();
         jumpForce = 13;
@@ -104,8 +103,8 @@ public class PlayerController : NetworkBehaviour
             if (!Input.GetKey(KeyCode.D) && !Input.GetKey(KeyCode.A)) x = 0;
             if (!Input.GetKey(KeyCode.W) && !Input.GetKey(KeyCode.S)) z = 0;
 
-            if(Joystick != null) x = Joystick.GetComponent<JoystickScript>().moveDirection.x / 13f;
-            if(Joystick != null) z = Joystick.GetComponent<JoystickScript>().moveDirection.y / 13f;
+            if(Joystick != null) x = Joystick.GetComponent<JoystickScript>().moveDirection.x / 18f;
+            if(Joystick != null) z = Joystick.GetComponent<JoystickScript>().moveDirection.y / 18f;
             if(Joystick != null && Joystick.GetComponent<JoystickScript>().isJumpRequest)
             {
                 if (roleNumber == 2 || roleNumber == 3)
@@ -132,7 +131,7 @@ public class PlayerController : NetworkBehaviour
                 if(animator != null) animator.SetBool("isDanceAnimation", false);
                 currentEmote = 0;
 
-                ExecuteJump();
+                if(roleNumber != 2 && roleNumber != 3) ExecuteJump();
 
                 jogJumpRequest = false;
             }
@@ -212,6 +211,10 @@ public class PlayerController : NetworkBehaviour
         {
             startCount += Time.deltaTime;
             return;
+        }
+        if(prisonTransform == null)
+        {
+            prisonTransform = variableManager.targetPrisonObj;
         }
         if(!isRoleCheck && roleNumber != -1)
         {
@@ -887,7 +890,7 @@ public class PlayerController : NetworkBehaviour
                     Vector3 vel = rb.velocity;
                     vel.y = 0;
                     rb.velocity = vel;
-                    rb.AddForce(Vector3.up * jumpForce * 1.7f, ForceMode.Impulse);
+                    rb.AddForce(Vector3.up * jumpForce * 1.6f, ForceMode.Impulse);
                     isStand = false;
                     myCollider.sharedMaterial = noFriction; 
                 }
@@ -940,9 +943,10 @@ public class PlayerController : NetworkBehaviour
                 Vector3 vel = rb.velocity;
                 if(bigJump && vel.y < 0)
                 {
+                    if (audioSource != null) audioSource.PlayOneShot(bigJumpAudio);
                     vel.y = 0;
                     rb.velocity = vel;
-                    rb.AddForce(Vector3.up * jumpForce * 1.7f, ForceMode.Impulse);
+                    rb.AddForce(Vector3.up * jumpForce * 1.6f, ForceMode.Impulse);
                     isStand = false;
                     myCollider.sharedMaterial = noFriction; 
                 }
@@ -955,6 +959,7 @@ public class PlayerController : NetworkBehaviour
                 Vector3 vel = rb.velocity;
                 if(bigJump && vel.y < 0)
                 {
+                    if (audioSource != null) audioSource.PlayOneShot(bigJumpAudio);
                     vel.y = 0;
                     rb.velocity = vel;
                     rb.AddForce(Vector3.up * jumpForce * 2.2f, ForceMode.Impulse);
