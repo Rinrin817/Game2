@@ -36,14 +36,22 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] AudioClip openAudio;
     [SerializeField] AudioClip closeAudio;
     [SerializeField] AudioClip typingAudio;
+    [SerializeField] AudioClip winAudio;
+    [SerializeField] AudioClip loseAudio;
+    [SerializeField] AudioClip closewinAudio;
     [SerializeField] Image[] ONOFFImage;
+    [SerializeField] Sprite[] GachaRankImage;
     [SerializeField] Image NoticeImage;
+    [SerializeField] Image ResultImage;
     [SerializeField] Canvas[] CanvasObjs;
     [SerializeField] private AudioMixer audioMixer;
     [SerializeField] GameObject[] ItemObjs;
     [SerializeField] GameObject[] ItemButton;
+    [SerializeField] GameObject[] Particle;
+    [SerializeField] GameObject[] FinishParticle;
     [SerializeField] Transform buttonContainer;
     public int nowItemID;
+    public int finishResult;
     Button Stage1Button;
     Button Stage2Button;
     GameObject StageChangeImage;
@@ -52,6 +60,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
     public int modePlayerCount;
     int lastGachaCount = 0;
     public List<int> Items = new List<int>();
+    public bool isClickCamera;
     public bool isSE;
     public bool isBGM;
     public float XsensivitySetting;
@@ -101,6 +110,10 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
     void Awake()
     {
+        // Debug.Log("finishResult: " + finishResult.ToString());
+        var setting = FindFirstObjectByType<SettingScript>();
+        finishResult = setting.GetComponent<SettingScript>().finishResultTemp;
+        isLeaving = false;
         stageNumber = 1;
         DontDestroyOnLoad(gameObject);
         runner.AddCallbacks(this);
@@ -151,9 +164,9 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
                 }
             };
             var result = await runner.StartGame(args);
-            Debug.Log(result.Ok);
-            Debug.Log(result.ShutdownReason);
-            Debug.Log(result.ErrorMessage);
+            //Debug.Log(result.Ok);
+            //Debug.Log(result.ShutdownReason);
+            //Debug.Log(result.ErrorMessage);
         }
 
         if (runner.IsSharedModeMasterClient)
@@ -169,7 +182,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
-        Debug.Log("Join");
+        //Debug.Log("Join");
         if (roomText != null) roomText.text = runner.ActivePlayers.Count() + "/" + modePlayerCount.ToString();
         if (player == runner.LocalPlayer)
         {
@@ -193,6 +206,38 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
         ONOFFImage[1].gameObject.SetActive(!isSE);
         ONOFFImage[2].gameObject.SetActive(isBGM);
         ONOFFImage[3].gameObject.SetActive(!isBGM);
+        //Debug.Log("finishResult: " + finishResult.ToString());
+        if(finishResult != -1 && ResultImage != null)
+        {
+            //Debug.Log("result");
+            ResultImage.gameObject.SetActive(true);
+            TextMeshProUGUI resultText = ResultImage.gameObject.transform.GetChild(0).GetComponent<TextMeshProUGUI>();
+            if(finishResult == 0)
+            {
+                resultText.text = "勝利";
+                audioSource.PlayOneShot(winAudio);
+            }
+            if(finishResult == 1)
+            {
+                resultText.text = "敗北";
+                FinishParticle[1].SetActive(false);
+                FinishParticle[2].SetActive(false);
+                FinishParticle[3].SetActive(false);
+                audioSource.PlayOneShot(loseAudio);
+            }
+            if(finishResult == 2)
+            {
+                resultText.text = "一部勝利";
+                FinishParticle[1].SetActive(false);
+                FinishParticle[2].SetActive(false);
+                audioSource.PlayOneShot(closewinAudio);
+            }
+            finishResult = -1;
+        }
+        if(Input.GetMouseButton(0) && ResultImage != null)
+        {
+            ResultImage.gameObject.SetActive(false);
+        }
         if(!gameStarted)
         {
             float mouseX = Input.GetAxis("Mouse X") * -300f * Time.deltaTime;
@@ -215,11 +260,11 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
             // Unityの古いバージョンを使っている場合は、以下を試してください
             // NetworkGameState foundState = FindObjectOfType<NetworkGameState>();
 
-            Debug.Log("foundState = " + (foundState != null).ToString());
+            //Debug.Log("foundState = " + (foundState != null).ToString());
             if (foundState != null)
             {
                 State = foundState;
-                Debug.Log("シーン遷移後に NetworkGameState を無事に見つけ出しました！");
+                //Debug.Log("シーン遷移後に NetworkGameState を無事に見つけ出しました！");
             }
         }
         if (runner != null && runner.IsRunning)
@@ -272,7 +317,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
         }
         if(GameObject.Find("BaseCanvas") != null && Stage1Button == null)
         {
-            Debug.Log("try");
+            //Debug.Log("try");
             parentObj = GameObject.Find("BaseCanvas");
             childTransform = parentObj.transform.Find("StageChangeImage");
             StageChangeImage = childTransform.gameObject;
@@ -351,7 +396,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
                 props["RoleTimerProp"] = (SessionProperty)roleExplainTime;
                 runner.SessionInfo.UpdateCustomProperties(props);
 
-                Debug.Log("Master: 条件達成。2秒後にAllPlayerStartGameを実行します。");
+                //Debug.Log("Master: 条件達成。2秒後にAllPlayerStartGameを実行します。");
                 
                 // 連打を防ぐため、Invokeで一呼吸置いてから実行します
                 Invoke("AllPlayerStartGame", 5f);
@@ -409,7 +454,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
         if (!allPlayers[0].Runner.IsSharedModeMasterClient)
         {
-            Debug.LogWarning("マスタークライアントのみがステージを決定できます。");
+            //Debug.LogWarning("マスタークライアントのみがステージを決定できます。");
             return;
         }
         Dictionary<int, int> stageVotes = new Dictionary<int, int>();
@@ -619,7 +664,9 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
         Items.Add(resultNumber);
         if(!ItemButton[resultNumber].activeSelf) ItemButton[resultNumber].SetActive(true);
         itemImage[0].gameObject.SetActive(true);
-        SetRarityText(0, resultNumber);
+        itemText[0].gameObject.SetActive(false);
+        itemText[1].text = ItemResult(resultNumber);
+        // SetRarityText(0, resultNumber);
         gemCount -= 1;
         TriggerGachaBox();
         SaveData();
@@ -637,11 +684,14 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
             Items.Add(resultNumber);
             if(!ItemButton[resultNumber].activeSelf) ItemButton[resultNumber].SetActive(true);
             itemImage[i + 1].gameObject.SetActive(true);
+            itemText[((i + 1) * 2)].gameObject.SetActive(false);
+            /*
             if (resultNumber < 15) itemText[((i + 1) * 2)].text = "コモン";         // 0～14 (各3%)
             else if (resultNumber < 23) itemText[((i + 1) * 2)].text = "レア";           // 15～22 (各3.9%)
             else if (resultNumber < 28) itemText[((i + 1) * 2)].text = "スーパーレア";   // 23～27 (各4.15%)
             else if (resultNumber < 33) itemText[((i + 1) * 2)].text = "ウルトラレア";   // 28～32 (各0.6%)
             else itemText[((i + 1) * 2)].text = "レジェンド";     // 33～37 (各0.01%)
+            */
             itemText[((i + 1) * 2) + 1].text = ItemResult(resultNumber);
         }
         gemCount -= 10;
@@ -653,11 +703,14 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
     void SetRarityText(int index, int resultNumber)
     {
         int textIndex = (index == 0 && lastGachaCount == 1) ? 1 : ((index + 1) * 2);
+        itemText[textIndex].gameObject.SetActive(false);
+        /*
         if (resultNumber < 15) itemText[textIndex].text = "コモン";         // 0～14 (各3%)
         else if (resultNumber < 23) itemText[textIndex].text = "レア";           // 15～22 (各3.9%)
         else if (resultNumber < 28) itemText[textIndex].text = "スーパーレア";   // 23～27 (各4.15%)
         else if (resultNumber < 33) itemText[textIndex].text = "ウルトラレア";   // 28～32 (各0.6%)
         else itemText[textIndex].text = "レジェンド";     // 33～37 (各0.01%)
+        */
         
         int numberTextIndex = (index == 0 && lastGachaCount == 1) ? 2 : (textIndex + 1);
         itemText[numberTextIndex].text = ItemResult(resultNumber);
@@ -687,29 +740,44 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
         {
             if (itemImage.Length > 0)
             {
-                // 単発の場合もレア度に応じた溜めを入れてから表示したい場合
                 int itemResultIndex = Items.Count - 1;
-                float delay = 0.1f;
+                
+                int rankIndex = 0; // 0:コモン, 1:レア, 2:SR, 3:UR, 4:レジェンド
+                float delay = 0.05f;
+
                 if (itemResultIndex >= 0 && itemResultIndex < Items.Count)
                 {
                     int resultNumber = Items[itemResultIndex];
-                    if (resultNumber < 15)       delay = 0.05f; // コモン
-                    else if (resultNumber < 23)  delay = 0.10f; // レア
-                    else if (resultNumber < 28)  delay = 0.4f; // スーパーレア
-                    else if (resultNumber < 33)  delay = 1.00f; // ウルトラレア
-                    else                         delay = 2.00f; // レジェンド
+                    if (resultNumber < 15)      { rankIndex = 0; delay = 0.05f; } // コモン
+                    else if (resultNumber < 23) { rankIndex = 1; delay = 0.10f; } // レア
+                    else if (resultNumber < 28) { rankIndex = 2; delay = 0.40f; } // スーパーレア
+                    else if (resultNumber < 33) { rankIndex = 3; delay = 1.00f; } // ウルトラレア
+                    else                        { rankIndex = 4; delay = 2.00f; } // レジェンド
                 }
 
                 yield return new WaitForSeconds(delay); // 表示前の溜め
+
+                // ランク番号を使って直接画像を変更
+                if (rankIndex < GachaRankImage.Length)
+                {
+                    itemImage[0].GetComponent<Image>().sprite = GachaRankImage[rankIndex];
+                }
+
                 itemImage[0].gameObject.SetActive(true);
+
+                GameObject canvasParentObj = GameObject.Find("Result");
+                for(int i = 0; i < 5; i ++)
+                {
+                    if(i <= rankIndex) Instantiate(Particle[i], itemImage[0].gameObject.transform.position, Quaternion.identity, canvasParentObj.transform);
+                }
                 audioSource.PlayOneShot(openGacha);
-                if(delay >= 0.4f) audioSource.PlayOneShot(openGacha2);
-                if(delay >= 1f) audioSource.PlayOneShot(openGacha3);
-                if(delay >= 2f) audioSource.PlayOneShot(openGacha4);
+                if (rankIndex >= 2) audioSource.PlayOneShot(openGacha2);
+                if (rankIndex >= 3) audioSource.PlayOneShot(openGacha3);
+                if (rankIndex >= 4) audioSource.PlayOneShot(openGacha4);
             }
             gachaFinish = true;
         }
-        // 10連のときは index 1 ～ 10 の10枚をレア度に応じた速度で順に表示
+        // 10連のときは index 1 ～ 10 の10枚を順に表示
         else
         {
             for (int i = 0; i < count; i++)
@@ -717,33 +785,45 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
                 int targetIndex = i + 1;
                 if (targetIndex < itemImage.Length)
                 {
-                    // 直近で獲得したアイテムのリストからレア度を判別
                     int itemResultIndex = Items.Count - count + i;
-                    float delay = 0.1f; // デフォルト（コモン用）
+                    
+                    int rankIndex = 0;
+                    float delay = 0.05f;
 
                     if (itemResultIndex >= 0 && itemResultIndex < Items.Count)
                     {
                         int resultNumber = Items[itemResultIndex];
-
-                        // レア度が高くなるにつれて待ち時間を長く設定
-                        if (resultNumber < 15)       delay = 0.05f; // コモン
-                        else if (resultNumber < 23)  delay = 0.10f; // レア
-                        else if (resultNumber < 28)  delay = 0.4f; // スーパーレア
-                        else if (resultNumber < 33)  delay = 1.00f; // ウルトラレア
-                        else                         delay = 2.00f; // レジェンド
+                        if (resultNumber < 15)      { rankIndex = 0; delay = 0.05f; }
+                        else if (resultNumber < 23) { rankIndex = 1; delay = 0.10f; }
+                        else if (resultNumber < 28) { rankIndex = 2; delay = 0.40f; }
+                        else if (resultNumber < 33) { rankIndex = 3; delay = 1.00f; }
+                        else                        { rankIndex = 4; delay = 2.00f; }
                     }
 
-                    // ① 表示前の溜め（ここでレア度が高いほどじらされる）
+                    // ① 表示前の溜め
                     yield return new WaitForSeconds(delay);
 
-                    // ② カード/画像を表示
-                    itemImage[targetIndex].gameObject.SetActive(true);
-                    audioSource.PlayOneShot(openGacha);
-                    if(delay >= 0.4f) audioSource.PlayOneShot(openGacha2);
-                    if(delay >= 1f) audioSource.PlayOneShot(openGacha3);
-                    if(delay >= 2f) audioSource.PlayOneShot(openGacha4);
+                    // ② カード/画像を表示 (targetIndexの画像を書き換えるように修正)
+                    if (rankIndex < GachaRankImage.Length)
+                    {
+                        itemImage[targetIndex].GetComponent<Image>().sprite = GachaRankImage[rankIndex];
+                    }
 
-                    // ③ 表示後の余韻（表示を確認させる時間）
+                    itemImage[targetIndex].gameObject.SetActive(true);
+
+                    GameObject canvasParentObj = GameObject.Find("Result");
+                    for(int i2 = 0; i2 < 5; i2 ++)
+                    {
+                        if(i2 <= rankIndex) Instantiate(Particle[i2], itemImage[targetIndex].gameObject.transform.position, Quaternion.identity, canvasParentObj.transform);
+                    }
+
+                    // 効果音再生
+                    audioSource.PlayOneShot(openGacha);
+                    if (rankIndex >= 2) audioSource.PlayOneShot(openGacha2);
+                    if (rankIndex >= 3) audioSource.PlayOneShot(openGacha3);
+                    if (rankIndex >= 4) audioSource.PlayOneShot(openGacha4);
+
+                    // ③ 表示後の余韻
                     yield return new WaitForSeconds(delay * 0.7f);
                 }
             }
@@ -836,6 +916,25 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
                 gachaBox.cooldownTimer = 0f;
             }
             for (int i = 0; i < itemImage.Length; i++) itemImage[i].gameObject.SetActive(false);   
+            for (int i = 0; i < 5; i++)
+            {
+                if (Particle[i] == null) continue;
+
+                string targetName = Particle[i].gameObject.name + "(Clone)";
+
+                GameObject[] allObjects = GameObject.FindObjectsByType<GameObject>(
+                    FindObjectsInactive.Include,
+                    FindObjectsSortMode.None
+                );
+
+                foreach (GameObject obj in allObjects)
+                {
+                    if (obj.name == targetName)
+                    {
+                        Destroy(obj);
+                    }
+                }
+            }
         }
     }
 
@@ -937,7 +1036,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
                 leaveButton.onClick.RemoveAllListeners();
                 leaveButton.onClick.AddListener(LeaveRoom);
                 
-                Debug.Log("退出ボタンに LeaveRoom を動的登録しました！");
+                //Debug.Log("退出ボタンに LeaveRoom を動的登録しました！");
             }
         }
     }

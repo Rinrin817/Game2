@@ -15,6 +15,7 @@ public class CameraController : MonoBehaviour, IPointerDownHandler, IDragHandler
     GameObject NetworkObj;
     public int pointerId = -1;
     float xRotation = 0f;
+    bool isClickCamera2 = false;
     StartFusion startFusion;
     public Vector3 topOffset    = new Vector3(0f, 2.5f, 0f);   // 真上に寄せた位置
     public float moveSpeed = 5f;
@@ -25,8 +26,6 @@ public class CameraController : MonoBehaviour, IPointerDownHandler, IDragHandler
     {
         NetworkObj = GameObject.Find("NetworkRunner");
         startFusion = NetworkObj.GetComponent<StartFusion>();
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
         PlayerTransform = null;
     }
 
@@ -42,6 +41,20 @@ public class CameraController : MonoBehaviour, IPointerDownHandler, IDragHandler
 
     void Update()
     {
+        if(isClickCamera2 != startFusion.isClickCamera)
+        {
+            isClickCamera2 = startFusion.isClickCamera;
+            if(startFusion.isClickCamera)
+            {
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
+            else
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+            }   
+        }
         Xsensitivity = startFusion.XsensivitySetting;
         Ysensitivity = startFusion.YsensivitySetting;
         if(Joystick == null && GameObject.Find("Joystick") != null)
@@ -74,25 +87,51 @@ public class CameraController : MonoBehaviour, IPointerDownHandler, IDragHandler
 
         if (EventSystem.current.IsPointerOverGameObject()) return;
 
-        if(Input.GetMouseButton(0) && Joystick == null)
+        if(startFusion.isClickCamera)
         {
-            // マウス入力（既存想定）
-            float mouseX = Input.GetAxis("Mouse X") * Xsensitivity * Time.deltaTime;
-            float mouseY = Input.GetAxis("Mouse Y") * Ysensitivity * Time.deltaTime;
+            if(Input.GetMouseButton(0) && Joystick == null)
+            {
+                // マウス入力（既存想定）
+                float mouseX = Input.GetAxis("Mouse X") * Xsensitivity * Time.deltaTime;
+                float mouseY = Input.GetAxis("Mouse Y") * Ysensitivity * Time.deltaTime;
 
-            // 回転更新（既存の xRotation を使用）
-            xRotation -= mouseY;
-            xRotation = Mathf.Clamp(xRotation, -60f, 60f);
+                // 回転更新（既存の xRotation を使用）
+                xRotation -= mouseY;
+                xRotation = Mathf.Clamp(xRotation, -60f, 60f);
 
-            PlayerTransform.Rotate(Vector3.up * mouseX);
-            // 視線（上下のみカメラ）
-            transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
-            transform.localPosition = new Vector3(
-                0f,
-                1f + Mathf.Max(0f, Mathf.Sin(xRotation * Mathf.Deg2Rad)) * 1.5f,
-                -4.5f + Mathf.Abs(Mathf.Sin(xRotation * Mathf.Deg2Rad)) * 5.5f
-            );
-            return;
+                PlayerTransform.Rotate(Vector3.up * mouseX);
+                // 視線（上下のみカメラ）
+                transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+                transform.localPosition = new Vector3(
+                    0f,
+                    1f + Mathf.Max(0f, Mathf.Sin(xRotation * Mathf.Deg2Rad)) * 1.5f,
+                    -4.5f + Mathf.Abs(Mathf.Sin(xRotation * Mathf.Deg2Rad)) * 5.5f
+                );
+                return;
+            }   
+        }
+        else
+        {
+            if(Joystick == null)
+            {
+                // マウス入力（既存想定）
+                float mouseX = Input.GetAxis("Mouse X") * Xsensitivity * Time.deltaTime;
+                float mouseY = Input.GetAxis("Mouse Y") * Ysensitivity * Time.deltaTime;
+
+                // 回転更新（既存の xRotation を使用）
+                xRotation -= mouseY;
+                xRotation = Mathf.Clamp(xRotation, -60f, 60f);
+
+                PlayerTransform.Rotate(Vector3.up * mouseX);
+                // 視線（上下のみカメラ）
+                transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+                transform.localPosition = new Vector3(
+                    0f,
+                    1f + Mathf.Max(0f, Mathf.Sin(xRotation * Mathf.Deg2Rad)) * 1.5f,
+                    -4.5f + Mathf.Abs(Mathf.Sin(xRotation * Mathf.Deg2Rad)) * 5.5f
+                );
+                return;
+            }   
         }
         if(Joystick == null) return;
         JoystickScript js = Joystick.GetComponent<JoystickScript>();

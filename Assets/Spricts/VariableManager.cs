@@ -19,11 +19,13 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     [SerializeField] Image[] imageObj;
     [SerializeField] GameObject lightObj;
     [SerializeField] GameObject playerPrefab;
+    [SerializeField] GameObject ActionText;
     [SerializeField] TextMeshProUGUI upText;
     [SerializeField] Image roleExplain;
     [SerializeField] TextMeshProUGUI roleText;
     [SerializeField] TextMeshProUGUI buttonText;
     [SerializeField] Image CoolTimeImage;
+    [SerializeField] Image CoolTimeImageParent;
     [SerializeField] GameObject playerNameCanvas;
     [SerializeField] TextMeshProUGUI CoolTimeText;
     [SerializeField] AudioClip missionStartAudio;
@@ -41,6 +43,11 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     public int[] gemList;
     public int playerCount;
     public bool prisonBreak;
+    bool previousPrisonBreak;
+    public string prisonBreaker;
+    public string catcher;
+    public string gemGet;
+    public string missionClearPlayer;
     public static int isFinish;
     public bool isGoalOpen;
     public int missionNumber;
@@ -56,7 +63,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     EnemyPlayerController[] enemyPlayerController;
     int[] roleArray;
     int random;
-    bool previousPrisonBreak;
     bool isLeaving;
     bool audio = false;
     float canMissionTimeCount;
@@ -84,7 +90,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     public override void Spawned()
     {
         upText.text = "";      
-        Debug.Log($"spawn!! - InstanceID: {gameObject.GetInstanceID()}", gameObject);
         
         // ★自分の端末でロードが終わった瞬間から「1秒」のカウントダウンを開始
         spawnTimer = 1f; 
@@ -350,7 +355,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
 
     void SetNameText()
     {
-        Debug.Log("hjjio");
         if (PlayerObj.Count != playerCount)
         {
             Debug.Log("setnametext. retrun");
@@ -362,7 +366,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         for (int i = 0; i < playerCount; i++)
         {
             if (imageObj[i].TryGetComponent(out CanvasGroup canvasGroup))
-                Debug.Log(i.ToString());
+                // Debug.Log(i.ToString());
                 canvasGroup.alpha = 1f;
 
             if (i >= PlayerObj.Count)
@@ -498,7 +502,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             Stage2Obj.SetActive(true);
         }
         targetPrisonObj = prisonObj[stageNumber - 1].transform;
-        Debug.Log(prisonObj[stageNumber - 1].transform.position.ToString());
+        // Debug.Log(prisonObj[stageNumber - 1].transform.position.ToString());
 
         prisonObjects = new GameObject[targetPrisonObj.childCount];
         for (int i = 0; i < targetPrisonObj.childCount; i++)
@@ -593,11 +597,15 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         upText.text = textString;
         if(missionNumber != -1) missionTimeCount += Time.deltaTime;
         canMissionTimeCount += Time.deltaTime;
+
         if(previousPrisonBreak != prisonBreak)
         {
             previousPrisonBreak = prisonBreak;
             if(prisonBreak)
             {
+                GameObject CanvasObj = GameObject.Find("Canvas");
+                TextMeshProUGUI actionText = Instantiate(ActionText, CanvasObj.transform, false).GetComponent<TextMeshProUGUI>();
+                actionText.text = prisonBreaker + "が牢屋を開放！";
                 smallAudioSource.PlayOneShot(prisonBreakAudio);
                 for(int i = 1; i < 5; i ++)
                 {
@@ -631,6 +639,34 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             }   
         }
 
+        if(catcher != "")
+        {
+            GameObject CanvasObj = GameObject.Find("Canvas");
+            TextMeshProUGUI actionText = Instantiate(ActionText, CanvasObj.transform, false).GetComponent<TextMeshProUGUI>();
+            actionText.text = catcher;
+            catcher = "";
+        }
+
+        if(gemGet != "")
+        {
+            GameObject CanvasObj = GameObject.Find("Canvas");
+            TextMeshProUGUI actionText = Instantiate(ActionText, CanvasObj.transform, false).GetComponent<TextMeshProUGUI>();
+            actionText.text = gemGet + "が宝石をゲット！";
+            if(isGoalOpen)
+            {
+                actionText.text = gemGet + "が最後の宝石をゲット！\nゴールが開いた！";
+            }
+            gemGet = "";
+        }
+
+        if(missionClearPlayer != "")
+        {
+            GameObject CanvasObj = GameObject.Find("Canvas");
+            TextMeshProUGUI actionText = Instantiate(ActionText, CanvasObj.transform, false).GetComponent<TextMeshProUGUI>();
+            actionText.text = missionClearPlayer + "がミッションをクリア！";
+            missionClearPlayer = "";
+        }
+
         float clampedTime = Mathf.Min(missionTimeCount, missionTimeCountLimit);
         float missionProgress = (missionTimeCountLimit > 0f) ? (clampedTime / missionTimeCountLimit) : 0f;
         float coolLimit = (canMissionTimeLimit > 0f) ? canMissionTimeLimit : 1f;
@@ -644,11 +680,13 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             {
                 CoolTimeText.text = "ミッション\n制限時間";
                 CoolTimeImage.transform.rotation = Quaternion.Euler(0f, 0f, -missionProgress * 360f);
+                if(missionProgress >= 0.5f && missionProgress < 0.505f) CoolTimeImageParent.GetComponent<CoolTimeScript>().ToPink();
+                if(missionProgress >= 0.75f && missionProgress < 0.755f) CoolTimeImageParent.GetComponent<CoolTimeScript>().ToRed();
             }
             else if (!canMission)
             {
                 CoolTimeText.text = "ミッション\nクールタイム";
-                CoolTimeImage.transform.rotation = Quaternion.Euler(0f, 0f, coolRatio * 360f);
+                CoolTimeImage.transform.rotation = Quaternion.Euler(0f, 0f, -coolRatio * 360f);
                 if(coolRatio == 1) canMission = true;
             }
             else
@@ -664,6 +702,8 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 CoolTimeImage.gameObject.SetActive(true);
                 CoolTimeText.text = "ミッション\n制限時間";
                 CoolTimeImage.transform.rotation = Quaternion.Euler(0f, 0f, -missionProgress * 360f);
+                if(missionProgress >= 0.5f && missionProgress < 0.505f) CoolTimeImageParent.GetComponent<CoolTimeScript>().ToPink();
+                if(missionProgress >= 0.75f && missionProgress < 0.755f) CoolTimeImageParent.GetComponent<CoolTimeScript>().ToRed();
             }
             else
             {
@@ -682,11 +722,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 missionTimeCount = 0;
                 if(missionNumber == 0)
                 {
-                    if(playerCount == 1) missionTimeCountLimit = 30;
-                    if(playerCount == 2) missionTimeCountLimit = 30;
-                    if(playerCount == 5) missionTimeCountLimit = 25;
-                    if(playerCount == 9) missionTimeCountLimit = 20;
-                    if(playerCount == 13) missionTimeCountLimit = 15;
                     if (playerController.roleNumber == 2)
                     {
                         RPC_StartMission(0, missionSubNumber);
@@ -694,11 +729,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 }
                 if(missionNumber == 1)
                 {
-                    if(playerCount == 1) missionTimeCountLimit = 50;
-                    if(playerCount == 2) missionTimeCountLimit = 50;
-                    if(playerCount == 5) missionTimeCountLimit = 40;
-                    if(playerCount == 9) missionTimeCountLimit = 30;
-                    if(playerCount == 13) missionTimeCountLimit = 20;
                     if (playerController.roleNumber == 2)
                     {
                         RPC_StartMission(1, 0);
@@ -706,11 +736,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 }
                 if(missionNumber == 2)
                 {
-                    if(playerCount == 1) missionTimeCountLimit = 30;
-                    if(playerCount == 2) missionTimeCountLimit = 50;
-                    if(playerCount == 5) missionTimeCountLimit = 30;
-                    if(playerCount == 9) missionTimeCountLimit = 22;
-                    if(playerCount == 13) missionTimeCountLimit = 15;
                     if (playerController.roleNumber == 2)
                     {
                         RPC_StartMission(2, missionSubNumber);
@@ -722,10 +747,18 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 if(playerController.roleNumber == 2)
                 {
                     isFinish = 0;   
+                    runner.gameObject.GetComponent<StartFusion>().gemCount += 5;
+                    runner.gameObject.GetComponent<StartFusion>().SaveData();
+                    LeaveRoom();
+                    return;
                 }
                 else
                 {
                     isFinish = 1;
+                    runner.gameObject.GetComponent<StartFusion>().gemCount += 5;
+                    runner.gameObject.GetComponent<StartFusion>().SaveData();
+                    LeaveRoom();
+                    return;
                 }
             }
             if(clearMission)
@@ -749,7 +782,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         if(!audio && isGoalOpen)
         {
             audioSource.PlayOneShot(openGoal);
-            Debug.Log("openGoal");
             audio = true;
         }
         prisonPlayerCount = 0;
@@ -793,7 +825,8 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             }
             else
             {
-                isFinish = 1;
+                if(playerController.roleNumber == 3) isFinish = 0;
+                else isFinish = 1;
                 runner.gameObject.GetComponent<StartFusion>().gemCount += 5;
                 runner.gameObject.GetComponent<StartFusion>().SaveData();
                 LeaveRoom();
@@ -833,12 +866,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         if(isFinish != -1)
         {
             playerController.roleNumber = 3;
-            if(!gemBool)
-            {
-                runner.gameObject.GetComponent<StartFusion>().gemCount += 5;
-                gemBool = true;
-            }
-            runner.gameObject.GetComponent<StartFusion>().SaveData();
         }
     }
 
@@ -846,15 +873,33 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     {
         if (isLeaving) return;
         isLeaving = true;
+
+        // runner の定義を取得
         runner = FindFirstObjectByType<NetworkRunner>();
-
-        runner.gameObject.GetComponent<StartFusion>().gameStarted = false;
-        runner.gameObject.GetComponent<StartFusion>().State = null;
-
-        if (runner != null && runner.IsRunning)
+        if (runner != null)
         {
-            await runner.Shutdown();
+            StartFusion sf = runner.GetComponent<StartFusion>();
+
+            if (runner.IsRunning)
+            {
+                await runner.Shutdown();
+            }
+            if (sf != null)
+            {
+                Debug.Log($"[ LeaveRoom ] Shutdown後の finishResult: {sf.finishResult}");
+            }
         }
+        var setting = FindFirstObjectByType<SettingScript>();
+        if (setting != null)
+        {
+            SettingScript sf = setting.GetComponent<SettingScript>();
+            if (sf != null)
+            {
+                sf.finishResultTemp = isFinish;
+            }
+        }
+
+        // 6. シーン遷移
         SceneManager.LoadScene(0);
     }
 
@@ -869,7 +914,18 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             if(missionNumber == 2) textString = "泥棒：誰かが呪われた！呪いを解除しに行こう";
         }
         else if(isGoalOpen) textString = "泥棒：光っているゴールから脱出しよう！";
-        else textString = "泥棒：金庫を破壊して宝石を盗もう";
+        else
+        {
+            int count = 0;
+            foreach (int num in gemList)
+            {
+                if (num == 1)
+                {
+                    count++;
+                }
+            }
+            textString = "泥棒：金庫を破壊して宝石を盗もう(" + count.ToString() + "/10)";
+        }
 
         if(playerController.roleNumber == 1)
         if(missionNumber != -1)
@@ -883,12 +939,17 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
 
         if(playerController.roleNumber == 2)
         if(canMission) textString = "だるまさん：右クリック＆1～3キーで\nミッションを発動してみよう";
-        else if(missionNumber != -1) textString = "だるまさん：クールタイムが終わるまで待とう";
+        else if(missionNumber == 0) {if(missionSubNumber == -1) textString = "だるまさん：矢印キーでだるまさん設置！"; else textString = "だるまさん：制限時間までに誰もクリアできなかったら勝利！";}
+        else if(missionNumber == 1) textString = "だるまさん：矢印キーで跳ねる！制限時間までに誰もクリアできなかったら勝利！";
+        else if(missionNumber == 2) textString = "だるまさん：制限時間までに誰もクリアできなかったら勝利！";
+        else if(missionNumber == -1) textString = "だるまさん：クールタイムが終わるまで待とう";
     }
 
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
     private void RPC_StartMission(int RPCmissionNumber, int missionSubNumber)
     {
+        CoolTimeImageParent.gameObject.SetActive(true);
+        CoolTimeImageParent.GetComponent<CoolTimeScript>().Reset();
         missionTimeCount = 0;
         missionNumber = RPCmissionNumber;
         Debug.Log(missionNumber.ToString());
@@ -909,26 +970,51 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             Vector3 spawnPos = Vector3.zero;
             Quaternion spawnRot = Quaternion.identity;
 
-            // 東西南北の座標と向きを決定
-            if (missionSubNumber == 0)
+            if(stageNumber == 1)
             {
-                spawnPos = new Vector3(120, 20f, 0);
-                spawnRot = Quaternion.Euler(0, 90, 0);
+                if (missionSubNumber == 0)
+                {
+                    spawnPos = new Vector3(100, 20f, 0);
+                    spawnRot = Quaternion.Euler(0, 90, 0);
+                }
+                else if (missionSubNumber == 1)
+                {
+                    spawnPos = new Vector3(-100, 20f, 0);
+                    spawnRot = Quaternion.Euler(0, -90, 0);
+                }
+                else if (missionSubNumber == 2)
+                {
+                    spawnPos = new Vector3(0, 20f, 100);
+                    spawnRot = Quaternion.Euler(0, 180, 0);
+                }
+                else if (missionSubNumber == 3)
+                {
+                    spawnPos = new Vector3(0, 20f, -100);
+                    spawnRot = Quaternion.Euler(0, -180, 0);
+                }   
             }
-            else if (missionSubNumber == 1)
+            if(stageNumber == 2)
             {
-                spawnPos = new Vector3(-120, 20f, 0);
-                spawnRot = Quaternion.Euler(0, -90, 0);
-            }
-            else if (missionSubNumber == 2)
-            {
-                spawnPos = new Vector3(0, 20f, 100);
-                spawnRot = Quaternion.Euler(0, 180, 0);
-            }
-            else if (missionSubNumber == 3)
-            {
-                spawnPos = new Vector3(0, 20f, -100);
-                spawnRot = Quaternion.Euler(0, -180, 0);
+                if (missionSubNumber == 0)
+                {
+                    spawnPos = new Vector3(120, 20f, 0);
+                    spawnRot = Quaternion.Euler(0, 90, 0);
+                }
+                else if (missionSubNumber == 1)
+                {
+                    spawnPos = new Vector3(-120, 20f, 0);
+                    spawnRot = Quaternion.Euler(0, -90, 0);
+                }
+                else if (missionSubNumber == 2)
+                {
+                    spawnPos = new Vector3(0, 20f, 100);
+                    spawnRot = Quaternion.Euler(0, 180, 0);
+                }
+                else if (missionSubNumber == 3)
+                {
+                    spawnPos = new Vector3(0, 20f, -100);
+                    spawnRot = Quaternion.Euler(0, -180, 0);
+                }   
             }
 
             // 💡マスターの権限でネットワーク上にだるまを生成（これで全員の画面に同期して出現します）
@@ -963,6 +1049,8 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
     private void RPC_ClearMission()
     {
+        CoolTimeImageParent.GetComponent<CoolTimeScript>().Reset();
+        if(playerController.roleNumber != 2) CoolTimeImageParent.gameObject.SetActive(false);
         missionNumber = -1;
         clearMission = true;
         foreach (var d in spawnedDarumas)

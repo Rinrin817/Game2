@@ -14,6 +14,8 @@ public class PlayerController : NetworkBehaviour
     [SerializeField] Rigidbody rb;
     [SerializeField] GameObject cameraObj;
     [SerializeField] Material[] materials;
+    [SerializeField] GameObject goodImage;
+    [SerializeField] GameObject badImage;
     GameObject ManagerObj;
     GameObject[] prisonObj;
     GameObject parent;
@@ -49,6 +51,8 @@ public class PlayerController : NetworkBehaviour
     GameObject collisionObj;
     AudioSource audioSource;
     public Animator animator;
+    bool goodImageBool;
+    bool badImageBool;
     int jumpCount;
     int jumpCountLimit;
     int cameraNumber;
@@ -216,8 +220,20 @@ public class PlayerController : NetworkBehaviour
         {
             prisonTransform = variableManager.targetPrisonObj;
         }
+        if(goodImage == null)
+        {
+            GameObject CanvasObj = GameObject.Find("Canvas");
+            Transform[] allTransforms = CanvasObj.GetComponentsInChildren<Transform>(true);
+            foreach (Transform t in allTransforms)
+            {
+                Debug.Log(t.name);
+                if (t.name == "GoodImage") goodImage = t.gameObject;
+                if (t.name == "BadImage") badImage = t.gameObject;
+            }
+        }
         if(!isRoleCheck && roleNumber != -1)
         {
+            stateNumber = 0;
             if(animator != null)
             {
                 Destroy(animator.gameObject);
@@ -232,6 +248,17 @@ public class PlayerController : NetworkBehaviour
                 gameObject.transform.rotation * Quaternion.Euler(new Vector3(0, 180, 0)), gameObject.transform).GetComponent<Animator>();
                 animator.gameObject.transform.localScale = new Vector3(0.3f, 0.15f, 0.3f);
                 animator.gameObject.SetActive(true);
+                for (int i = 0; i < 6; i++)
+                {
+                    foreach (var objCol in prisonObj[i].GetComponents<Collider>())
+                    {
+                        foreach (var playerCol in GetComponents<Collider>())
+                        {
+                            // 第3引数に false を渡すことで、当たり判定を有効化（無視を解除）します
+                            Physics.IgnoreCollision(objCol, playerCol, false);
+                        }
+                    } 
+                }
             }
             if(roleNumber == 1)
             {
@@ -362,6 +389,17 @@ public class PlayerController : NetworkBehaviour
         if (Object.HasStateAuthority)
         {
             if(variableManager.prisonBreak) stateNumber = 0;
+        }
+
+        if(goodImageBool)
+        {
+            goodImage.SetActive(true);
+            goodImageBool = false;
+        }
+        if(badImageBool)
+        {
+            badImage.SetActive(true);
+            badImageBool = false;
         }
 
         if (animator != null && animator.runtimeAnimatorController != null)
@@ -829,19 +867,26 @@ public class PlayerController : NetworkBehaviour
         {
             collisionObj = collision.gameObject;
             PlayerController playerController = collisionObj.GetComponent<PlayerController>();
-            if(roleNumber == 0 && playerController.roleNumber == 1)
+            if(roleNumber == 0 && playerController.roleNumber == 1 && stateNumber == 0)
             {
-                if (audioSource != null) audioSource.PlayOneShot(badAction);
                 stateNumber = 1;
+                string catcherName = playerController.NetworkPlayerName.ToString(); 
+                string wasCatchedName = this.NetworkPlayerName.ToString();
+                variableManager.catcher = catcherName + "が" + wasCatchedName + "を捕まえた！";
+                if (audioSource != null) audioSource.PlayOneShot(badAction);
                 variableManager.prisonBreak = false;
                 Invoke("MoveToPrison", 0.2f);
+                badImageBool = true;
             }
         }
         if(collision.gameObject.CompareTag("Prison"))
         {
             if(roleNumber == 0 && stateNumber == 0)
             {
+                int myNumber;
                 variableManager.prisonBreak = true;
+                variableManager.prisonBreaker = NetworkPlayerName.ToString();
+                goodImageBool = true;
             }
         }
         if(collision.gameObject.CompareTag("PolliceObject"))
@@ -865,6 +910,8 @@ public class PlayerController : NetworkBehaviour
     {
         if(collider.gameObject.CompareTag("Gem"))
         {
+            goodImageBool = true;
+            variableManager.gemGet = this.NetworkPlayerName.ToString();
             if (audioSource != null) audioSource.PlayOneShot(goodAction);
             variableManager.gemList[collider.gameObject.GetComponent<GemScript>().gemNumber] = 1;
             if(!variableManager.gemList.Contains(0))
@@ -875,8 +922,10 @@ public class PlayerController : NetworkBehaviour
         }
         if(collider.gameObject.CompareTag("daruma"))
         {
+            goodImageBool = true;
             if (audioSource != null) audioSource.PlayOneShot(goodAction2);
             variableManager.clearMission = true;
+            variableManager.missionClearPlayer = NetworkPlayerName.ToString();
         }
         if(collider.gameObject.CompareTag("Jump"))
         {
@@ -886,11 +935,12 @@ public class PlayerController : NetworkBehaviour
                 {
                     if (audioSource != null) audioSource.PlayOneShot(bigJumpAudio);
                     if(animator != null) animator.SetBool("isJumpAnimation", true);
+                    StartCoroutine(JumpCubeAnimation(collider.gameObject));
                     bigJump = true;
                     Vector3 vel = rb.velocity;
                     vel.y = 0;
                     rb.velocity = vel;
-                    rb.AddForce(Vector3.up * jumpForce * 1.6f, ForceMode.Impulse);
+                    rb.AddForce(Vector3.up * jumpForce * 1.53f, ForceMode.Impulse);
                     isStand = false;
                     myCollider.sharedMaterial = noFriction; 
                 }
@@ -904,6 +954,7 @@ public class PlayerController : NetworkBehaviour
                 {
                     if (audioSource != null) audioSource.PlayOneShot(bigJumpAudio);
                     if(animator != null) animator.SetBool("isJumpAnimation", true);
+                    StartCoroutine(JumpCubeAnimation(collider.gameObject));
                     bigJump = true;
                     Vector3 vel = rb.velocity;
                     vel.y = 0;
@@ -944,9 +995,10 @@ public class PlayerController : NetworkBehaviour
                 if(bigJump && vel.y < 0)
                 {
                     if (audioSource != null) audioSource.PlayOneShot(bigJumpAudio);
+                    StartCoroutine(JumpCubeAnimation(collider.gameObject));
                     vel.y = 0;
                     rb.velocity = vel;
-                    rb.AddForce(Vector3.up * jumpForce * 1.6f, ForceMode.Impulse);
+                    rb.AddForce(Vector3.up * jumpForce * 1.53f, ForceMode.Impulse);
                     isStand = false;
                     myCollider.sharedMaterial = noFriction; 
                 }
@@ -960,6 +1012,7 @@ public class PlayerController : NetworkBehaviour
                 if(bigJump && vel.y < 0)
                 {
                     if (audioSource != null) audioSource.PlayOneShot(bigJumpAudio);
+                    StartCoroutine(JumpCubeAnimation(collider.gameObject));
                     vel.y = 0;
                     rb.velocity = vel;
                     rb.AddForce(Vector3.up * jumpForce * 2.2f, ForceMode.Impulse);
@@ -983,6 +1036,28 @@ public class PlayerController : NetworkBehaviour
     private void OnNameChanged()
     {
         nameText.text = NetworkPlayerName.ToString();
+    }
+
+    IEnumerator JumpCubeAnimation(GameObject jumpObj)
+    {
+        Vector3 initialScale = jumpObj.transform.localScale;
+        float duration = 1.0f; // アニメーション全体の時間
+        float elapsed = 0f;
+        float maxY = 5f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            float damping = Mathf.Exp(-4f * t); // 時間経過で揺れを小さくする
+            float bounce = Mathf.Sin(t * Mathf.PI * 8f) * damping;
+            float yOffset = bounce * maxY;
+            jumpObj.transform.localScale = initialScale + new Vector3(0, yOffset, 0);
+
+            yield return null; // 1フレーム待つ
+        }
+
+        jumpObj.transform.localScale = initialScale;
     }
 
     public override void Spawned()

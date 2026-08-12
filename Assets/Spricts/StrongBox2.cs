@@ -51,6 +51,7 @@ public class StrongBox2 : MonoBehaviour
         if(action && !isOpen)
         {
             haveOpen = false;
+            gemObj.GetComponent<Gem2Script>().effect = true;
             timeCount = 0;
             isOpen = true;
             Objects[4].SetActive(false);

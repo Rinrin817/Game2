@@ -13,6 +13,7 @@ public class PlayerName : MonoBehaviour
         int random = Random.Range(00, 99);
         return "製作者〆" + random.ToString();
         #endif
-        return inputField.text;
+        if(inputField.text == "") return "Player";
+        else return inputField.text;
     }
 }

@@ -6,10 +6,19 @@ using Fusion;
 public class daruma1Script : NetworkBehaviour
 {
     [SerializeField] Rigidbody rb;
+    GameObject lightObj;
     GameObject playerObj;
     float force;
     int critical;
     float boundTimer;
+
+
+    void Start()
+    {
+        lightObj = GameObject.Find("Directional Light");
+        lightObj.GetComponent<Light>().color = Color.Lerp(Color.white, Color.red, 0.3f);
+        lightObj.GetComponent<Light>().intensity = 1f;
+    }
 
     void Update()
     {

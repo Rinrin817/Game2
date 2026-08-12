@@ -21,6 +21,7 @@ public class HelpScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if(Input.GetKeyDown(KeyCode.H)) OpenRule();
         if(Input.GetMouseButtonDown(0))
         {
             ruleObj[count].SetActive(false);

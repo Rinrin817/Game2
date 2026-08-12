@@ -19,6 +19,7 @@ public class SettingScript : MonoBehaviour
     [SerializeField] AudioSource audioSource;
     [SerializeField] AudioClip openAudio;
     [SerializeField] AudioClip closeAudio;
+    public int finishResultTemp;
     
     void Awake()
     {
@@ -33,11 +34,13 @@ public class SettingScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        
+        if(Input.GetKeyDown(KeyCode.J)) OpenSettings();
     }
 
     public void OpenSettings()
     {
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         if(SettingImage.gameObject.activeSelf)
         {
             SettingImage.gameObject.SetActive(false);
@@ -46,6 +49,11 @@ public class SettingScript : MonoBehaviour
             XSensivitiyImage.gameObject.SetActive(false);
             YSensivitiyImage.gameObject.SetActive(false);
             audioSource.PlayOneShot(closeAudio, 0.5f);
+            if(!startFusion.isClickCamera)
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;   
+            }
         }
         else
         {
@@ -56,6 +64,12 @@ public class SettingScript : MonoBehaviour
             YSensivitiyImage.gameObject.SetActive(true);   
             audioSource.PlayOneShot(openAudio, 0.5f);
         }
+    }
+
+    public void isCameraSetting()
+    {
+        if(startFusion.isClickCamera) startFusion.isClickCamera = false;
+        else startFusion.isClickCamera = true;
     }
 
     public void isSESetting()
