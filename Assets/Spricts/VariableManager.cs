@@ -720,6 +720,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 clearMission = false;
                 missionStart = false;
                 missionTimeCount = 0;
+                missionTimeCountLimit = 100;
                 if(missionNumber == 0)
                 {
                     if (playerController.roleNumber == 2)

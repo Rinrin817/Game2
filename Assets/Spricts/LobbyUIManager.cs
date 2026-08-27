@@ -93,11 +93,11 @@ public class LobbyUIManager : MonoBehaviour
         {
             positions = new Vector3[]
             {
-                new Vector3(-5f, 0f, -3.5f),
-                new Vector3(-2.5f, 0f, -3.5f),
-                new Vector3(0f, 0f, -3.5f),
-                new Vector3(2.5f, 0f, -3.5f),
-                new Vector3(5f, 0f, -3.5f)
+                new Vector3(-5f, 0.15f, -3.5f),
+                new Vector3(-2.5f, 0.15f, -3.5f),
+                new Vector3(0f, 0.15f, -3.5f),
+                new Vector3(2.5f, 0.15f, -3.5f),
+                new Vector3(5f, 0.15f, -3.5f)
             };
             size = 0.4f;
         }
@@ -105,11 +105,11 @@ public class LobbyUIManager : MonoBehaviour
         {
             positions = new Vector3[]
             {
-                new Vector3(-5f, -1f, -3.5f),
-                new Vector3(-2.5f, -1f, -3.5f),
-                new Vector3(0f, -1f, -3.5f),
-                new Vector3(2.5f, -1f, -3.5f),
-                new Vector3(5f, -1f, -3.5f),
+                new Vector3(-5f, -0.7f, -3.5f),
+                new Vector3(-2.5f, -0.7f, -3.5f),
+                new Vector3(0f, -0.7f, -3.5f),
+                new Vector3(2.5f, -0.7f, -3.5f),
+                new Vector3(5f, -0.7f, -3.5f),
                 new Vector3(-3.75f, 2f, -3.5f),
                 new Vector3(-1.25f, 2f, -3.5f),
                 new Vector3(1.25f, 2f, -3.5f),
@@ -121,19 +121,19 @@ public class LobbyUIManager : MonoBehaviour
         {
             positions = new Vector3[]
             {
-                new Vector3(-5.5f, -1f, -3.5f),
-                new Vector3(-3.3f, -1f, -3.5f),
-                new Vector3(-1.1f, -1f, -3.5f),
-                new Vector3(1.1f, -1f, -3.5f),
-                new Vector3(3.3f, -1f, -3.5f),
-                new Vector3(5.5f, -1f, -3.5f),
-                new Vector3(-5.5f, 1f, -3.5f),
-                new Vector3(-3.3f, 1f, -3.5f),
-                new Vector3(-1.1f, 1f, -3.5f),
-                new Vector3(1.1f, 1f, -3.5f),
-                new Vector3(3.3f, 1f, -3.5f),
-                new Vector3(5.5f, 1f, -3.5f),
-                new Vector3(4.4f, 3f, -3.5f)
+                new Vector3(-5.5f, -1.3f, -3.5f),
+                new Vector3(-3.3f, -1.3f, -3.5f),
+                new Vector3(-1.1f, -1.3f, -3.5f),
+                new Vector3(1.1f, -1.3f, -3.5f),
+                new Vector3(3.3f, -1.3f, -3.5f),
+                new Vector3(5.5f, -1.3f, -3.5f),
+                new Vector3(-5.5f, 1.3f, -3.5f),
+                new Vector3(-3.3f, 1.3f, -3.5f),
+                new Vector3(-1.1f, 1.3f, -3.5f),
+                new Vector3(1.1f, 1.3f, -3.5f),
+                new Vector3(3.3f, 1.3f, -3.5f),
+                new Vector3(5.5f, 1.3f, -3.5f),
+                new Vector3(0f, 3f, -3.5f)
             };   
             size = 0.2f;
         }

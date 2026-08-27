@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using TMPro;
 
 public class HelpScript : MonoBehaviour
 {
@@ -9,6 +11,7 @@ public class HelpScript : MonoBehaviour
     [SerializeField] AudioSource audioSource;
     [SerializeField] AudioClip openAudio;
     [SerializeField] AudioClip closeAudio;
+    [SerializeField] TextMeshProUGUI countText;
     int count = 0;
     int count2 = 0;
     int count3 = 0;
@@ -21,6 +24,14 @@ public class HelpScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null)
+        {
+            if (EventSystem.current.currentSelectedGameObject.GetComponent<UnityEngine.UI.InputField>() != null ||
+                EventSystem.current.currentSelectedGameObject.GetComponent<TMPro.TMP_InputField>() != null)
+            {
+                return;
+            }
+        }
         if(Input.GetKeyDown(KeyCode.H)) OpenRule();
         if(Input.GetMouseButtonDown(0))
         {
@@ -33,7 +44,12 @@ public class HelpScript : MonoBehaviour
         {
             if(!ruleObj[i].activeSelf) count2 ++ ;
         }
-        if(count2 == 3) count = 0;
+        if(count2 == 3)
+        {
+            count = 0;
+            countText.gameObject.SetActive(false);
+        }
+        countText.text = (count2 + 1).ToString() + "/3";
     }
 
     public void OpenRule()
@@ -41,7 +57,8 @@ public class HelpScript : MonoBehaviour
         for(int i = 0; i < ruleObj.Length; i ++)
         {
             ruleObj[i].SetActive(true);
-            audioSource.PlayOneShot(openAudio, 0.5f);
         }
+        countText.gameObject.SetActive(true);
+        audioSource.PlayOneShot(openAudio, 0.5f);
     }
 }

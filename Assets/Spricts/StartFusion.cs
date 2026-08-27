@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using UnityEngine.SceneManagement;
+using UnityEngine.EventSystems;
 using TMPro;
 using System.Linq;
 using System.Threading.Tasks;
@@ -664,9 +665,13 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
         Items.Add(resultNumber);
         if(!ItemButton[resultNumber].activeSelf) ItemButton[resultNumber].SetActive(true);
         itemImage[0].gameObject.SetActive(true);
-        itemText[0].gameObject.SetActive(false);
         itemText[1].text = ItemResult(resultNumber);
-        // SetRarityText(0, resultNumber);
+        itemImage[0].gameObject.SetActive(true);
+        if (resultNumber < 15) itemText[0].text = "コモン";         // 0～14 (各3%)
+        else if (resultNumber < 23) itemText[0].text = "レア";           // 15～22 (各3.9%)
+        else if (resultNumber < 28) itemText[0].text = "スーパーレア";   // 23～27 (各4.15%)
+        else if (resultNumber < 33) itemText[0].text = "ウルトラレア";   // 28～32 (各0.6%)
+        else itemText[0].text = "レジェンド";     // 33～37 (各0.01%)
         gemCount -= 1;
         TriggerGachaBox();
         SaveData();
@@ -684,14 +689,11 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
             Items.Add(resultNumber);
             if(!ItemButton[resultNumber].activeSelf) ItemButton[resultNumber].SetActive(true);
             itemImage[i + 1].gameObject.SetActive(true);
-            itemText[((i + 1) * 2)].gameObject.SetActive(false);
-            /*
             if (resultNumber < 15) itemText[((i + 1) * 2)].text = "コモン";         // 0～14 (各3%)
             else if (resultNumber < 23) itemText[((i + 1) * 2)].text = "レア";           // 15～22 (各3.9%)
             else if (resultNumber < 28) itemText[((i + 1) * 2)].text = "スーパーレア";   // 23～27 (各4.15%)
             else if (resultNumber < 33) itemText[((i + 1) * 2)].text = "ウルトラレア";   // 28～32 (各0.6%)
             else itemText[((i + 1) * 2)].text = "レジェンド";     // 33～37 (各0.01%)
-            */
             itemText[((i + 1) * 2) + 1].text = ItemResult(resultNumber);
         }
         gemCount -= 10;
@@ -703,15 +705,11 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
     void SetRarityText(int index, int resultNumber)
     {
         int textIndex = (index == 0 && lastGachaCount == 1) ? 1 : ((index + 1) * 2);
-        itemText[textIndex].gameObject.SetActive(false);
-        /*
         if (resultNumber < 15) itemText[textIndex].text = "コモン";         // 0～14 (各3%)
         else if (resultNumber < 23) itemText[textIndex].text = "レア";           // 15～22 (各3.9%)
         else if (resultNumber < 28) itemText[textIndex].text = "スーパーレア";   // 23～27 (各4.15%)
         else if (resultNumber < 33) itemText[textIndex].text = "ウルトラレア";   // 28～32 (各0.6%)
         else itemText[textIndex].text = "レジェンド";     // 33～37 (各0.01%)
-        */
-        
         int numberTextIndex = (index == 0 && lastGachaCount == 1) ? 2 : (textIndex + 1);
         itemText[numberTextIndex].text = ItemResult(resultNumber);
     }
@@ -764,11 +762,10 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
                 }
 
                 itemImage[0].gameObject.SetActive(true);
-
-                GameObject canvasParentObj = GameObject.Find("Result");
                 for(int i = 0; i < 5; i ++)
                 {
-                    if(i <= rankIndex) Instantiate(Particle[i], itemImage[0].gameObject.transform.position, Quaternion.identity, canvasParentObj.transform);
+                    GameObject particleObj;
+                    if(i <= rankIndex) particleObj = Instantiate(Particle[i], itemImage[0].gameObject.transform.position, Quaternion.identity, itemImage[0].gameObject.transform).gameObject;
                 }
                 audioSource.PlayOneShot(openGacha);
                 if (rankIndex >= 2) audioSource.PlayOneShot(openGacha2);
@@ -810,11 +807,9 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
                     }
 
                     itemImage[targetIndex].gameObject.SetActive(true);
-
-                    GameObject canvasParentObj = GameObject.Find("Result");
                     for(int i2 = 0; i2 < 5; i2 ++)
                     {
-                        if(i2 <= rankIndex) Instantiate(Particle[i2], itemImage[targetIndex].gameObject.transform.position, Quaternion.identity, canvasParentObj.transform);
+                        if(i2 <= rankIndex) Instantiate(Particle[i2], itemImage[targetIndex].gameObject.transform.position, Quaternion.identity, itemImage[targetIndex].gameObject.transform);
                     }
 
                     // 効果音再生
