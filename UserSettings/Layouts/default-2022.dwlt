@@ -19,7 +19,7 @@ MonoBehaviour:
     width: 1280
     height: 709.3334
   m_ShowMode: 4
-  m_Title: Inspector
+  m_Title: Game
   m_RootView: {fileID: 2}
   m_MinSize: {x: 875, y: 300}
   m_MaxSize: {x: 10000, y: 10000}
@@ -120,7 +120,7 @@ MonoBehaviour:
   m_MinSize: {x: 400, y: 100}
   m_MaxSize: {x: 32384, y: 16192}
   vertical: 0
-  controlID: 112
+  controlID: 113
   draggingID: 0
 --- !u!114 &6
 MonoBehaviour:
@@ -146,7 +146,7 @@ MonoBehaviour:
   m_MinSize: {x: 200, y: 100}
   m_MaxSize: {x: 16192, y: 16192}
   vertical: 1
-  controlID: 49
+  controlID: 76
   draggingID: 0
 --- !u!114 &7
 MonoBehaviour:
@@ -303,7 +303,7 @@ MonoBehaviour:
   m_MinSize: {x: 100, y: 100}
   m_MaxSize: {x: 8096, y: 16192}
   vertical: 1
-  controlID: 113
+  controlID: 114
   draggingID: 0
 --- !u!114 &13
 MonoBehaviour:
@@ -496,10 +496,10 @@ MonoBehaviour:
     m_OverlaysVisible: 1
   m_SceneHierarchy:
     m_TreeViewState:
-      scrollPos: {x: 0, y: 66.66666}
-      m_SelectedIDs: 00060200ec1a0200e415020084110200522002000a0e02002c200200b81802009a0e0200841e0200d606020092150200461c020022090200741e02000c1f02000c0b0200a62302008c200200d01a0200
-      m_LastClickedID: 137936
-      m_ExpandedIDs: 9e15ffff7a1bffffce1bffff5e29ffffdc34ffff604affff0660ffff4c6bffffb876fffffc8bffff40a1ffff7ea1ffffc2b6ffff08c2ffff74cdffffb8e2ffffeaf9ffff
+      scrollPos: {x: 0, y: 0}
+      m_SelectedIDs: 
+      m_LastClickedID: 0
+      m_ExpandedIDs: eaf9ffff
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -568,7 +568,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets/Scenes
+    - Assets/Spricts
     m_Globs: []
     m_OriginalText: 
     m_ImportLogFlags: 0
@@ -609,7 +609,7 @@ MonoBehaviour:
       m_Icon: {fileID: 0}
       m_ResourceFile: 
   m_AssetTreeState:
-    scrollPos: {x: 0, y: 3693.6658}
+    scrollPos: {x: 0, y: 3813.6658}
     m_SelectedIDs: 
     m_LastClickedID: 0
     m_ExpandedIDs: ffffffff00000000d2640000227f0000307f0000407f00002093000026930000289300002a9300002c9300002e93000030930000329300003493000036930000389300003a9300003c9300003e93000040930000429300004493000046930000489300004a9300004c9300004e93000050930000529300005493000056930000589300005a9300005c930000
@@ -1176,7 +1176,7 @@ MonoBehaviour:
   m_Rotation:
     m_Target: {x: 0.009600042, y: -0.017406154, z: -0.0001777275, w: -0.9998145}
     speed: 2
-    m_Value: {x: 0.009599927, y: -0.017405944, z: -0.00017772536, w: -0.9998025}
+    m_Value: {x: 0.009600043, y: -0.017406154, z: -0.0001777275, w: -0.9998145}
   m_Size:
     m_Target: 4.1860666
     speed: 2
