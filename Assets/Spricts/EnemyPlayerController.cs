@@ -961,170 +961,92 @@ public class EnemyPlayerController : MonoBehaviour
         return nearestGem;
     }
 
-    /*
+
+
     void CheckAndAutoJump()
     {
         if (!isStand) return;
         if (jumpCount >= jumpCountLimit) return;
 
-        if(wishJump)
+        if (wishJump)
         {
             PushKey(4);
             PushKey(2);
             return;
         }
 
-        Vector3 origin = transform.position + Vector3.up * 0.3f + -transform.forward * 1f; 
+        Vector3 origin =
+            transform.position +
+            Vector3.up * 0.1f +
+            transform.forward * 0.2f;
+
         Vector3 dir = transform.forward;
-        float radius = 0.5f; 
-        float distance = obstacleCheckDistance + 2.5f;
 
-        RaycastHit[] hits = Physics.SphereCastAll(origin, radius, dir, distance);
+        float radius = 0.45f;
+        float distance = obstacleCheckDistance + 2f;
+
+        RaycastHit[] hits =
+            Physics.SphereCastAll(origin, radius, dir, distance);
 
         System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
         foreach (var h in hits)
         {
             if (h.collider.gameObject == gameObject) continue;
+            if (!h.collider.CompareTag("Stage")) continue;
 
-            if (h.collider.CompareTag("Stage"))
-            {
-                float heightDiff = h.collider.gameObject.transform.localScale.y / 2 + h.collider.gameObject.transform.position.y - (transform.position.y - transform.localScale.y / 2);
-
-                if (heightDiff > 0f && heightDiff <= obstacleCheckHeight)
-                {
-                    origin = transform.position + Vector3.up * 2f + -transform.forward * 1f;
-                    RaycastHit[] hits2 = Physics.SphereCastAll(origin, radius, dir, distance);
-                    foreach(var h2 in hits2)
-                    {
-                        if (h2.collider.gameObject == gameObject) continue;
-                        if (h2.collider.CompareTag("Stage"))
-                        {
-                            return;
-                        }
-                    }
-                    PushKey(4);
-                    return;
-                }
-            }
-        }
-        
-        origin = transform.position + Vector3.up * 1f + -transform.forward * 2.5f; 
-        hits = Physics.SphereCastAll(origin, radius, dir, distance);
-        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-
-        foreach (var h in hits)
-        {
-            if (h.collider.gameObject == gameObject) continue;
-
-            if (h.collider.CompareTag("Stage"))
-            {
-                float heightDiff = h.collider.gameObject.transform.localScale.y / 2 + h.collider.gameObject.transform.position.y - (transform.position.y - transform.localScale.y / 2);
-
-                if (heightDiff > 0f && heightDiff <= obstacleCheckHeight)
-                {
-                    origin = transform.position + Vector3.up * 2f + -transform.forward * 1f;
-                    RaycastHit[] hits2 = Physics.SphereCastAll(origin, radius, dir, distance);
-                    foreach(var h2 in hits2)
-                    {
-                        if (h2.collider.gameObject == gameObject) continue;
-                        if (h2.collider.CompareTag("Stage"))
-                        {
-                            return;
-                        }
-                    }
-                    PushKey(4);
-                    return;
-                }
-            }
-        }
-    }
-    */
-
-void CheckAndAutoJump()
-{
-    if (!isStand) return;
-    if (jumpCount >= jumpCountLimit) return;
-
-    if (wishJump)
-    {
-        PushKey(4);
-        PushKey(2);
-        return;
-    }
-
-    Vector3 origin =
-        transform.position +
-        Vector3.up * 0.1f +
-        transform.forward * 0.2f;
-
-    Vector3 dir = transform.forward;
-
-    float radius = 0.45f;
-    float distance = obstacleCheckDistance + 2f;
-
-    RaycastHit[] hits =
-        Physics.SphereCastAll(origin, radius, dir, distance);
-
-    System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
-
-    foreach (var h in hits)
-    {
-        if (h.collider.gameObject == gameObject) continue;
-        if (!h.collider.CompareTag("Stage")) continue;
-
-        // =========================
-        // 接触地点の高さを見る
-        // =========================
-        float hitHeight = h.point.y;
-
-        float myBottom =
-            transform.position.y -
-            transform.localScale.y / 2f;
-
-        float heightDiff = hitHeight - myBottom;
-
-        // Debug.Log(heightDiff);
-
-        if (heightDiff > 0.02f &&
-            heightDiff <= obstacleCheckHeight)
-        {
             // =========================
-            // 頭上チェック
+            // 接触地点の高さを見る
             // =========================
-            Vector3 upperOrigin =
-                transform.position +
-                Vector3.up * 1.3f;
+            float hitHeight = h.point.y;
 
-            RaycastHit[] upperHits =
-                Physics.SphereCastAll(
-                    upperOrigin,
-                    0.35f,
-                    dir,
-                    1.2f
-                );
+            float myBottom =
+                transform.position.y -
+                transform.localScale.y / 2f;
 
-            bool blocked = false;
+            float heightDiff = hitHeight - myBottom;
 
-            foreach (var uh in upperHits)
+            // Debug.Log(heightDiff);
+
+            if (heightDiff > 0.02f &&
+                heightDiff <= obstacleCheckHeight)
             {
-                if (uh.collider.gameObject == gameObject)
-                    continue;
+                // =========================
+                // 頭上チェック
+                // =========================
+                Vector3 upperOrigin =
+                    transform.position +
+                    Vector3.up * 1.3f;
 
-                if (uh.collider.CompareTag("Stage"))
+                RaycastHit[] upperHits =
+                    Physics.SphereCastAll(
+                        upperOrigin,
+                        0.35f,
+                        dir,
+                        1.2f
+                    );
+
+                bool blocked = false;
+
+                foreach (var uh in upperHits)
                 {
-                    blocked = true;
-                    break;
+                    if (uh.collider.gameObject == gameObject)
+                        continue;
+
+                    if (uh.collider.CompareTag("Stage"))
+                    {
+                        blocked = true;
+                        break;
+                    }
                 }
+
+                if (blocked) return;
+
+                PushKey(4);
+                return;
             }
-
-            if (blocked) return;
-
-            PushKey(4);
-            return;
         }
     }
-}
 
     bool IsTargetInSight(GameObject target)
     {
@@ -1268,58 +1190,6 @@ void CheckAndAutoJump()
         }
         return length;
     }
-    /*
-    void LookDestinationPath(float rotSpeed)
-    {
-        Vector3 destination = nowDestination;
-
-        // 地上のみNavMesh更新
-        if (isStand)
-        {
-            agent.SetDestination(destination);
-            if (agent.hasPath)
-            {
-                cachedCorners = agent.path.corners;
-                cornerIndex = 1;
-            }
-        }
-
-        // 方向(targetDir)の決定
-        if (!isStand && cachedCorners != null && cornerIndex < cachedCorners.Length)
-        {
-            Vector3 targetCorner = cachedCorners[cornerIndex];
-            targetCorner.y = transform.position.y; // 高さを固定
-
-            if (Vector3.Distance(transform.position, targetCorner) < 1.0f)
-            {
-                cornerIndex++;
-            }
-            targetDir = targetCorner - transform.position;
-        }
-        else if (agent.hasPath && agent.path.corners.Length >= 2)
-        {
-            targetDir = agent.path.corners[1] - transform.position;
-        }
-
-        // 回転の実行
-        targetDir.y = 0;
-        if (targetDir.sqrMagnitude > 0.01f)
-        {
-            // ★ここで計算した方向を回転値に変換する
-            Quaternion targetRot = Quaternion.LookRotation(targetDir);
-
-            if (Quaternion.Angle(transform.rotation, targetRot) > 1f)
-            {
-                transform.rotation = Quaternion.RotateTowards(
-                    transform.rotation, targetRot, rotSpeed * Time.deltaTime);
-            }
-            else
-            {
-                transform.rotation = targetRot;
-            }
-        }
-    }
-    */
     
     void LookDestinationPath(float rotSpeed)
     {

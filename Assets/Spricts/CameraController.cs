@@ -24,9 +24,21 @@ public class CameraController : MonoBehaviour, IPointerDownHandler, IDragHandler
 
     void Start()
     {
+        startFusion = FindFirstObjectByType<StartFusion>();
         NetworkObj = GameObject.Find("NetworkRunner");
-        startFusion = NetworkObj.GetComponent<StartFusion>();
         PlayerTransform = null;
+
+        if (startFusion == null)
+        {
+            Debug.LogError("CameraController: StartFusion が見つかりません。");
+            enabled = false;
+            return;
+        }
+
+        if (NetworkObj == null)
+        {
+            Debug.LogWarning("CameraController: NetworkRunner がまだ存在しません。");
+        }
     }
 
     public void OnPointerDown(PointerEventData eventData)

@@ -51,6 +51,9 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
     [SerializeField] GameObject[] Particle;
     [SerializeField] GameObject[] FinishParticle;
     [SerializeField] Transform buttonContainer;
+    [SerializeField] NetworkRunner runnerPrefab;
+    [SerializeField] NetworkObject enemyPrefab;
+    [SerializeField] Transform[] enemySpawnPoints;
     public int nowItemID;
     public int finishResult;
     Button Stage1Button;
@@ -249,6 +252,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
             for(int i = 0; i < 38; i ++)
             {
                 Items.Add(i);
+                gemCount += 100;
                 if(!ItemButton[i].activeSelf) ItemButton[i].SetActive(true);
                 SaveData();
             }
@@ -265,18 +269,21 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
             if (foundState != null)
             {
                 State = foundState;
-                //Debug.Log("シーン遷移後に NetworkGameState を無事に見つけ出しました！");
+                Debug.Log("シーン遷移後に NetworkGameState を無事に見つけ出しました！");
             }
         }
-        if (runner != null && runner.IsRunning)
+        if (runner != null && runner.IsRunning && runner.GameMode == GameMode.Shared)
         {
             if (!runner.IsSharedModeMasterClient)
             {
-                if (runner.SessionInfo.Properties.TryGetValue("GameStartedProp", out var startedProp))
+                if (runner.SessionInfo.IsValid &&
+                    runner.SessionInfo.Properties.TryGetValue("GameStartedProp", out var startedProp))
                 {
                     gameStarted = ((int)startedProp == 1);
                 }
-                if (runner.SessionInfo.Properties.TryGetValue("RoleTimerProp", out var timerProp))
+
+                if (runner.SessionInfo.IsValid &&
+                    runner.SessionInfo.Properties.TryGetValue("RoleTimerProp", out var timerProp))
                 {
                     if (State != null && State.Object != null && State.Object.IsValid)
                     {
@@ -288,7 +295,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
         if (gameStarted && State != null && State.Object != null && State.Object.IsValid)
         {
-            if (runner != null && runner.IsRunning && runner.IsSharedModeMasterClient)
+            if ((runner != null && runner.IsRunning && runner.IsSharedModeMasterClient) || runner.GameMode == GameMode.Single)
             {
                 if(roleExplainTime > -0.1f)
                 {
@@ -311,10 +318,23 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
             }
             //return;
         }
+        else if(runner.GameMode == GameMode.Single)
+        {
+            State = runner
+                .Spawn(networkGameStatePrefab, Vector3.zero, Quaternion.identity)
+                .GetComponent<NetworkGameState>();
+            Debug.Log(State != null);
+        }
+
         if(GameObject.Find("StageChange") != null)
         {
             GameObject.Find("StageChange").GetComponent<Button>().onClick.RemoveAllListeners();
             GameObject.Find("StageChange").GetComponent<Button>().onClick.AddListener(ChangeStage);
+        }
+        if(GameObject.Find("CPUButton") != null)
+        {
+            GameObject.Find("CPUButton").GetComponent<Button>().onClick.RemoveAllListeners();
+            GameObject.Find("CPUButton").GetComponent<Button>().onClick.AddListener(StartCPU);
         }
         if(GameObject.Find("BaseCanvas") != null && Stage1Button == null)
         {
@@ -832,6 +852,94 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
         childTransform = StageChangeImage.transform.Find("Stage1");
         if(StageChangeImage.activeSelf) StageChangeImage.SetActive(false);
         else StageChangeImage.SetActive(true);
+    }
+    
+    public async void StartCPU()
+    {
+        if (isLeaving) return;
+        isLeaving = true;
+
+        audioSource.PlayOneShot(closeAudio, 0.5f);
+
+        // StartFusionが付いているGameObjectを保存
+        GameObject ownerObject = gameObject;
+
+        try
+        {
+            NetworkRunner oldRunner = runner;
+
+            if (oldRunner != null)
+            {
+                // GameObjectを破棄せずにRunnerを終了
+                if (oldRunner.IsRunning)
+                {
+                    await oldRunner.Shutdown(destroyGameObject: false);
+                }
+
+                // 古いRunnerコンポーネントだけを削除
+                Destroy(oldRunner);
+                runner = null;
+
+                // Destroyの実行を待つ
+                await Task.Yield();
+            }
+
+            // StartFusionと同じGameObjectに新しいRunnerを追加
+            runner = ownerObject.AddComponent<NetworkRunner>();
+
+            // シーンマネージャーを取得・生成
+            NetworkSceneManagerDefault sceneManager =
+                ownerObject.GetComponent<NetworkSceneManagerDefault>();
+
+            if (sceneManager == null)
+            {
+                sceneManager =
+                    ownerObject.AddComponent<NetworkSceneManagerDefault>();
+            }
+
+            // 既存のStartFusionをコールバックに登録
+            runner.AddCallbacks(this);
+
+            Debug.Log("[CPU] StartGame開始");
+
+            var result = await runner.StartGame(new StartGameArgs
+            {
+                GameMode = GameMode.Single,
+                SceneManager = sceneManager
+            });
+
+            Debug.Log($"[CPU] StartGame終了: Ok={result.Ok}, Reason={result.ShutdownReason}");
+
+            if (!result.Ok)
+            {
+                Debug.LogError("[CPU] セッション開始失敗");
+                gameStarted = false;
+                isLeaving = false;
+                return;
+            }
+
+            gameStarted = true;
+
+            // CPUモード用のNetworkGameStateを生成
+            State = runner
+                .Spawn(networkGameStatePrefab, Vector3.zero, Quaternion.identity)
+                .GetComponent<NetworkGameState>();
+
+            Debug.Log($"[CPU] NetworkGameState生成: {State != null}");
+
+            Debug.Log("[CPU] シーン遷移開始");
+
+            runner.LoadScene(SceneRef.FromIndex(1));
+
+            Debug.Log("[CPU] LoadScene呼び出し終了");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("[CPU] エラー: " + e);
+
+            gameStarted = false;
+        }
+        isLeaving = false;
     }
 
     public void ChangeToStage1()

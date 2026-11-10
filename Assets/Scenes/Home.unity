@@ -59231,6 +59231,9 @@ MonoBehaviour:
   - {fileID: 56223678}
   - {fileID: 1753495080}
   buttonContainer: {fileID: 738080169}
+  runnerPrefab: {fileID: 0}
+  enemyPrefab: {fileID: 4100729244261523140, guid: bebbfc27ceb0ff24b934a149cb3edcaa, type: 3}
+  enemySpawnPoints: []
   nowItemID: -1
   finishResult: -1
   audioSource: {fileID: 1893972182}
