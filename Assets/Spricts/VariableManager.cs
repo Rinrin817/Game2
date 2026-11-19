@@ -88,12 +88,15 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     private bool hasSpawnedPlayer = false; // 二重実行防止用
     public bool isRoleChange;
     bool hasSpawnedEnemies = false;
+    int enemyCount;
+    bool gameEndSent = false;
+    List<PlayerRef> nameSlotOwners = new List<PlayerRef>();
+    bool nameSlotsInitialized = false;
+    public Dictionary<int, int> cpuNames = new Dictionary<int, int>();
 
     public override void Spawned()
     {
         upText.text = "";      
-        
-        // ★自分の端末でロードが終わった瞬間から「1秒」のカウントダウンを開始
         spawnTimer = 1f; 
         hasSpawnedPlayer = false;
     }
@@ -180,7 +183,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         {
             hasSpawnedEnemies = true;
             playerCount = runner.gameObject.GetComponent<StartFusion>().modePlayerCount;
-            int enemyCount = playerCount - 1;
+            enemyCount = playerCount - 1;
             SpawnEnemies(runner, enemyCount);
         }
 
@@ -195,6 +198,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             }
         }
 
+        playerCount = runner.GetComponent<StartFusion>().modePlayerCount;
         StartCoroutine(WaitAndAssign(obj.GetComponent<NetworkObject>(), runner));
     }
 
@@ -477,65 +481,175 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         return null;
     }
 
+
     void SetNameText()
     {
-        if (PlayerObj.Count != playerCount)
+        NetworkRunner currentRunner = FindFirstObjectByType<NetworkRunner>();
+        if (currentRunner == null) return;
+
+        StartFusion startFusion = currentRunner.GetComponent<StartFusion>();
+        if (startFusion == null) return;
+
+        bool isCPU = currentRunner.GameMode == GameMode.Single;
+
+        PlayerController[] controllers =
+            FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+
+        NetworkPlayerInfo[] rawPlayers =
+            FindObjectsByType<NetworkPlayerInfo>(FindObjectsSortMode.None);
+
+        // =========================================
+        // 1. オンライン戦：最初のプレイヤー配置を記憶
+        // =========================================
+        if (!isCPU && !nameSlotsInitialized)
         {
-            Debug.Log("setnametext. retrun");
-            return;
+            if (controllers.Length != startFusion.modePlayerCount)
+                return;
+
+            PlayerController[] sortedControllers = controllers
+                .OrderBy(x => x.Object.Id)
+                .ToArray();
+
+            nameSlotOwners.Clear();
+
+            foreach (var controller in sortedControllers)
+            {
+                nameSlotOwners.Add(controller.Object.InputAuthority);
+            }
+
+            nameSlotsInitialized = true;
         }
 
-        NetworkPlayerInfo[] rawPlayers = FindObjectsByType<NetworkPlayerInfo>(FindObjectsSortMode.None);
+        // =========================================
+        // 2. プレイヤーごとの表示処理
+        // =========================================
+        int displayCount = isCPU
+            ? startFusion.modePlayerCount
+            : nameSlotOwners.Count;
 
-        for (int i = 0; i < playerCount; i++)
+        for (int i = 0; i < displayCount; i++)
         {
-            if (imageObj[i].TryGetComponent(out CanvasGroup canvasGroup))
-                // Debug.Log(i.ToString());
-                canvasGroup.alpha = 1f;
+            if (i >= imageObj.Length) break;
 
-            if (i >= PlayerObj.Count)
-                continue;
+            PlayerController currentController = null;
+            NetworkPlayerInfo matchedPlayerInfo = null;
 
-            var currentController = PlayerObj[i].GetComponent<PlayerController>();
+            if (isCPU)
+            {
+                // CPU戦はPlayerObjの順番で取得
+                if (i < PlayerObj.Count)
+                {
+                    currentController =
+                        PlayerObj[i].GetComponent<PlayerController>();
+                }
+            }
+            else
+            {
+                // オンライン戦は最初に記憶したPlayerRefから取得
+                PlayerRef targetRef = nameSlotOwners[i];
+
+                currentController = controllers.FirstOrDefault(p =>
+                    p != null &&
+                    p.Object != null &&
+                    p.Object.IsValid &&
+                    p.Object.InputAuthority == targetRef
+                );
+            }
+
+            // プレイヤーが存在しない場合はアイコンを消す
             if (currentController == null)
+            {
+                imageObj[i].gameObject.SetActive(false);
                 continue;
+            }
 
-            var matchedPlayerInfo = rawPlayers.FirstOrDefault(p =>
-                p != null &&
-                p.Object != null &&
-                p.Object.IsValid &&
-                !p.IsLeaving &&
-                p.OwnerRef == currentController.Object.InputAuthority);
+            // プレイヤー情報を検索
+            if (currentController.Object != null &&
+                currentController.Object.IsValid)
+            {
+                matchedPlayerInfo = rawPlayers.FirstOrDefault(p =>
+                    p != null &&
+                    p.Object != null &&
+                    p.Object.IsValid &&
+                    !p.IsLeaving &&
+                    p.OwnerRef == currentController.Object.InputAuthority
+                );
+            }
 
-            if (matchedPlayerInfo == null)
+            // オンライン戦でNetworkPlayerInfoが存在しない場合も非表示
+            if (!isCPU && matchedPlayerInfo == null)
+            {
+                imageObj[i].gameObject.SetActive(false);
                 continue;
+            }
 
-            // --- 1. アイコンと特殊状態のアクティブ切り替え ---
+            imageObj[i].gameObject.SetActive(true);
+
+            if (imageObj[i].TryGetComponent(out CanvasGroup canvasGroup))
+            {
+                canvasGroup.alpha = 1f;
+            }
+
+            // =========================================
+            // 3. アイコンの切り替え
+            // =========================================
             foreach (Transform child in imageObj[i].transform)
             {
                 if (child.name == "Aikon")
                     child.gameObject.SetActive(currentController.roleNumber == 0);
+
                 else if (child.name == "Aikon (1)")
                     child.gameObject.SetActive(currentController.roleNumber == 1);
+
                 else if (child.name == "Aikon (2)")
                     child.gameObject.SetActive(currentController.roleNumber == 2);
+
                 else if (child.name == "Goal")
                     child.gameObject.SetActive(currentController.roleNumber == 3);
+
                 else if (child.name == "InPrison")
                     child.gameObject.SetActive(currentController.stateNumber == 1);
             }
 
-            // --- 2. 名前テキストの更新（非表示の親の影響を受けないよう全テキストを一括更新） ---
-            TextMeshProUGUI[] nameTexts = imageObj[i].GetComponentsInChildren<TextMeshProUGUI>(true);
+            // =========================================
+            // 4. 名前の設定
+            // =========================================
+            TextMeshProUGUI[] nameTexts =
+                imageObj[i].GetComponentsInChildren<TextMeshProUGUI>(true);
+
             foreach (var textComp in nameTexts)
             {
-                if (textComp.gameObject.name == "NameText")
+                if (textComp.gameObject.name != "NameText")
+                    continue;
+
+                if (isCPU && currentController.gameObject.name.StartsWith("Enemy_"))
                 {
-                    textComp.text = matchedPlayerInfo.PlayerName.ToString();
+                    textComp.text = GetCPUName(currentController.gameObject);
+                }
+                else
+                {
+                    // 通常プレイヤーの名前
+                    if (matchedPlayerInfo != null)
+                    {
+                        textComp.text = matchedPlayerInfo.PlayerName.ToString();
+                    }
                 }
             }
         }
     }
+
+    public string GetCPUName(GameObject enemy)
+    {
+        int id = enemy.GetInstanceID();
+
+        if (!cpuNames.ContainsKey(id))
+        {
+            cpuNames[id] = Random.Range(0, 100);
+        }
+
+        return "CPU〆" + cpuNames[id];
+    }
+
 
     void Awake()
     {
@@ -594,18 +708,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             }
         }
 
-        if (playerController == null)
-        {
-            Debug.LogWarning("[Update停止] playerControllerがnull");
-            return;
-        }
-
-        if (!playerController.isActiveAndEnabled)
-        {
-            Debug.LogWarning("[Update停止] playerControllerが無効");
-            return;
-        }
-
         StartFusion startFusion = FindFirstObjectByType<StartFusion>();
 
         if (startFusion == null)
@@ -622,8 +724,37 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             return;
         }
 
-        stageNumber = startFusion.stageNumber;
+        PlayerController[] controllers =
+        FindObjectsByType<PlayerController>(FindObjectsSortMode.None)
+        .OrderBy(c => c.Object.Id)
+        .ToArray();
 
+        PlayerObj.Clear();
+
+        foreach (var controller in controllers)
+        {
+            PlayerObj.Add(controller.gameObject);
+        }
+        if (PlayerObj.Count != playerCount)
+        {
+            playerCount = runner.ActivePlayers.Count();
+            Debug.Log("playerCountを設定");
+            // return;   
+        }
+
+        if (playerController == null)
+        {
+            Debug.LogWarning("[Update停止] playerControllerがnull");
+            return;
+        }
+
+        if (!playerController.isActiveAndEnabled)
+        {
+            Debug.LogWarning("[Update停止] playerControllerが無効");
+            return;
+        }
+
+        stageNumber = startFusion.stageNumber;
         
         GameObject Stage1Obj = null;
         GameObject Stage2Obj = null;   
@@ -636,15 +767,15 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         {
             stageNumber = 1;
         }
+        Stage1Obj.SetActive(true);
+        Stage2Obj.SetActive(true);
         if(stageNumber == 1)
         {
-            Stage1Obj.SetActive(true);
             Stage2Obj.SetActive(false);
         }
         if(stageNumber == 2)
         {
             Stage1Obj.SetActive(false);
-            Stage2Obj.SetActive(true);
         }
         targetPrisonObj = prisonObj[stageNumber - 1].transform;
         // Debug.Log(prisonObj[stageNumber - 1].transform.position.ToString());
@@ -654,17 +785,11 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         {
             prisonObjects[i] = targetPrisonObj.GetChild(i).gameObject;
         }
-        if(StartButton.playerCountStatic != 5 && StartButton.playerCountStatic != 9 && StartButton.playerCountStatic != 13)
-        {
-            playerCount = 5;
-        }
-        else
-        {
-            playerCount = StartButton.playerCountStatic;
-        }
         
         if(playerNameCanvas != null)
         {
+            playerNameCanvas.SetActive(false);
+            /*
             if(playerController.roleNumber == 2)
             {
                 playerNameCanvas.SetActive(false);
@@ -672,7 +797,8 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             else
             {
                 playerNameCanvas.SetActive(true);
-            }            
+            }
+            */
         }
 
         if(!itemBool && FindChildWithTag(playerController.gameObject, "Skin") != null)
@@ -721,22 +847,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                     playerControllers[i].canMove = true;   
                 }
             }
-        }
-        PlayerController[] controllers =
-        FindObjectsByType<PlayerController>(FindObjectsSortMode.None)
-        .OrderBy(c => c.Object.Id)
-        .ToArray();
-
-        PlayerObj.Clear();
-
-        foreach (var controller in controllers)
-        {
-            PlayerObj.Add(controller.gameObject);
-        }
-        if (PlayerObj.Count != playerCount)
-        {
-            playerCount = runner.ActivePlayers.Count();
-            // return;   
         }
 
         isSetName ++;
@@ -871,7 +981,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 clearMission = false;
                 missionStart = false;
                 missionTimeCount = 0;
-                missionTimeCountLimit = 100;
                 if(missionNumber == 0)
                 {
                     if (playerController.roleNumber == 2)
@@ -936,22 +1045,23 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             audioSource.PlayOneShot(openGoal);
             audio = true;
         }
+
         prisonPlayerCount = 0;
         goalPlayerCount = 0;
         continuePlayerCount = 0;
-
-        if(isLeaving) return;
-
-        for(int i = 0; i < playerCount; i ++)
+        if (isLeaving) return;
+        if (!HasStateAuthority || gameEndSent) return; // StateAuthority以外では全体の勝利判定を行わない
+        for (int i = 0; i < playerCount; i ++)
         {
             playerControllers2 = PlayerObj[i].GetComponent<PlayerController>();
+
             if (playerControllers2 != null)
             {
-                if(playerControllers2.roleNumber == 0 && playerControllers2.stateNumber == 1)
+                if (playerControllers2.roleNumber == 0 && playerControllers2.stateNumber == 1)
                 {
                     prisonPlayerCount ++;
                 }
-                else if(playerControllers2.roleNumber == 3)
+                else if (playerControllers2.roleNumber == 3)
                 {
                     goalPlayerCount ++;
                 }
@@ -965,60 +1075,100 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 goalPlayerCount ++;
             }
         }
-        if((playerCount == 1 && continuePlayerCount == 0) || (playerCount == 5 && continuePlayerCount == 2) || (playerCount == 9 && continuePlayerCount == 3) || (playerCount == 13 && continuePlayerCount == 4))
+
+        int playerCount2 = 0;
+        if (runner.GameMode == GameMode.Single)
         {
-            if(playerController.roleNumber == 1)
-            {
-                isFinish = 2;
-                runner.gameObject.GetComponent<StartFusion>().gemCount += 5;
-                runner.gameObject.GetComponent<StartFusion>().SaveData();
-                LeaveRoom();
-                return;
-            }
-            else
-            {
-                if(playerController.roleNumber == 3) isFinish = 0;
-                else isFinish = 1;
-                runner.gameObject.GetComponent<StartFusion>().gemCount += 5;
-                runner.gameObject.GetComponent<StartFusion>().SaveData();
-                LeaveRoom();
-                return;
-            }
+            playerCount2 = 1 + enemyCount;
         }
-        if((playerCount == 5 && prisonPlayerCount == 3) || (playerCount == 9 && prisonPlayerCount == 6) || (playerCount == 13 && prisonPlayerCount == 9))
+        else
         {
-            if(playerController.roleNumber == 1)
-            {
-                isFinish = 0;
-                runner.gameObject.GetComponent<StartFusion>().gemCount += 5;
-                runner.gameObject.GetComponent<StartFusion>().SaveData();
-                LeaveRoom();
-                return;
-            }
-            else
-            {
-                isFinish = 1;
-                runner.gameObject.GetComponent<StartFusion>().gemCount += 5;
-                runner.gameObject.GetComponent<StartFusion>().SaveData();
-                LeaveRoom();
-                return;
-            }
+            playerCount2 = runner.ActivePlayers.Count();
         }
-        if((playerCount == 5 && goalPlayerCount == 3) || (playerCount == 9 && goalPlayerCount == 6) || (playerCount == 13 && goalPlayerCount == 9))
+
+        // ② 泥棒が全員捕まった
+        if ((playerCount2 == 5 && prisonPlayerCount == 3) ||
+            (playerCount2 == 9 && prisonPlayerCount == 6) ||
+            (playerCount2 == 13 && prisonPlayerCount == 9))
         {
-            if(playerController.roleNumber != 0)
-            {
-                isFinish = 1;
-                runner.gameObject.GetComponent<StartFusion>().gemCount += 5;
-                runner.gameObject.GetComponent<StartFusion>().SaveData();
-                LeaveRoom();
-                return;
-            }
+            gameEndSent = true;
+            RPC_GameEnd(1);
+            return;
         }
-        if(isFinish != -1)
+
+        // ③ 泥棒が全員ゴールした
+        if ((playerCount2 == 5 && goalPlayerCount == 3) ||
+            (playerCount2 == 9 && goalPlayerCount == 6) ||
+            (playerCount2 == 13 && goalPlayerCount == 9))
+        {
+            gameEndSent = true;
+            RPC_GameEnd(2);
+            return;
+        }
+
+        // ① 全員が捕まる、またはゴールするなどして活動中の泥棒がいなくなった
+        if ((playerCount2 == 1 && continuePlayerCount == 0) ||
+            (playerCount2 == 5 && continuePlayerCount == 2) ||
+            (playerCount2 == 9 && continuePlayerCount == 3) ||
+            (playerCount2 == 13 && continuePlayerCount == 4))
+        {
+            gameEndSent = true;
+            RPC_GameEnd(0);
+            return;
+        }
+
+        if (isFinish != -1)
         {
             playerController.roleNumber = 3;
         }
+    }
+
+    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    private void RPC_GameEnd(int endType)
+    {
+        if (isLeaving) return;
+
+        // 勝利条件ごとに各プレイヤーの結果を決定
+        switch (endType)
+        {
+            // ① 活動中の泥棒がいなくなった
+            case 0:
+                if (playerController.roleNumber == 1) isFinish = 2; // 部分勝利
+                else if (playerController.roleNumber == 3) isFinish = 0;
+                else isFinish = 1;
+                break;
+
+            // ② 泥棒が全員捕まった
+            case 1:
+                if(playerController.roleNumber == 1) isFinish = 0; // 警察勝利
+                else if(playerController.roleNumber == 0) isFinish = 1;
+                else isFinish = 1;
+                break;
+
+            // ③ 泥棒が全員ゴールした
+            case 2:
+                if(playerController.roleNumber == 1) isFinish = 1; // 警察負け
+                else if(playerController.roleNumber == 0) isFinish = 0;
+                else isFinish = 1;
+                break;
+        }
+
+        // 各プレイヤーの報酬を保存
+        NetworkRunner currentRunner = FindFirstObjectByType<NetworkRunner>();
+
+        if (currentRunner != null)
+        {
+            StartFusion sf = currentRunner.GetComponent<StartFusion>();
+
+            if (sf != null)
+            {
+                sf.gemCount += 5;
+                sf.SaveData();
+            }
+        }
+
+        // 全員がルームを退出
+        LeaveRoom();
     }
 
     async void LeaveRoom()
@@ -1097,8 +1247,8 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         else if(missionNumber == -1) textString = "だるまさん：クールタイムが終わるまで待とう";
     }
 
-    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
-    private void RPC_StartMission(int RPCmissionNumber, int missionSubNumber)
+    [Rpc(RpcSources.All, RpcTargets.All)]
+    void RPC_StartMission(int RPCmissionNumber, int missionSubNumber)
     {
         CoolTimeImageParent.gameObject.SetActive(true);
         CoolTimeImageParent.GetComponent<CoolTimeScript>().Reset();
@@ -1112,13 +1262,15 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         }
         spawnedDarumas.Clear();
 
+        if(!Object.HasStateAuthority) return;
+
         if (missionNumber == 0)
         {
             if(playerCount == 1) missionTimeCountLimit = 30;
             if(playerCount == 2) missionTimeCountLimit = 30;
-            if(playerCount == 5) missionTimeCountLimit = 25;
-            if(playerCount == 9) missionTimeCountLimit = 20;
-            if(playerCount == 13) missionTimeCountLimit = 15;
+            if(playerCount == 5) missionTimeCountLimit = 20;
+            if(playerCount == 9) missionTimeCountLimit = 10;
+            if(playerCount == 13) missionTimeCountLimit = 10;
             Vector3 spawnPos = Vector3.zero;
             Quaternion spawnRot = Quaternion.identity;
 
@@ -1168,9 +1320,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                     spawnRot = Quaternion.Euler(0, -180, 0);
                 }   
             }
-
-            // 💡マスターの権限でネットワーク上にだるまを生成（これで全員の画面に同期して出現します）
-
+            
             NetworkObject obj = Runner.Spawn(darumaPrefab, spawnPos, spawnRot);
             spawnedDarumas.Add(obj);
         }

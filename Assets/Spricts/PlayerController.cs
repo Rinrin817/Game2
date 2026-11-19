@@ -7,7 +7,6 @@ using TMPro;
 using System.Linq;
 using Fusion;
 using Fusion.Sockets;
-using System.Dynamic;
 
 public class PlayerController : NetworkBehaviour
 {
@@ -117,7 +116,8 @@ public class PlayerController : NetworkBehaviour
     bool hasExtraInput;
     bool darumaTransformSet;
     Vector3 lastPosition;
-float stuckTimer;
+    float stuckTimer;
+    bool isSecondTime = false;
 
     // ★他人の画面でもアニメーションを動かすために、ネットワーク変数(各画面で同期される)にします
     [Networked] float x { get; set; }
@@ -144,15 +144,12 @@ float stuckTimer;
         {
             aiPrisonTransform = prisonObj[VariableManager.stageNumber].transform;
             // aiGoalTransform = goalObj[VariableManager.stageNumber].transform;
-
             agent = GetComponent<UnityEngine.AI.NavMeshAgent>();
-
             if (agent != null)
             {
                 agent.updatePosition = false;
                 agent.updateRotation = false;
             }
-
             if (roleNumber == 1)
             {
                 SetAreaMask("DoroOnly", false);
@@ -189,6 +186,8 @@ float stuckTimer;
             int.TryParse(enemyName.Replace("Enemy_", ""), out int parsedNumber))
             {
                 number = parsedNumber;
+                nameText.text = variableManager.GetCPUName(gameObject);
+                Debug.Log(variableManager.GetCPUName(gameObject));
             }
             string randomName = number == 1
                 ? "Random"
@@ -1189,7 +1188,9 @@ float stuckTimer;
             {
                 stateNumber = 1;
                 string catcherName = playerController.NetworkPlayerName.ToString(); 
+                if(catcherName == "") catcherName = variableManager.GetCPUName(playerController.gameObject);
                 string wasCatchedName = this.NetworkPlayerName.ToString();
+                if(wasCatchedName == "") wasCatchedName = variableManager.GetCPUName(playerController.gameObject);
                 variableManager.catcher = catcherName + "が" + wasCatchedName + "を捕まえた！";
                 if (audioSource != null) audioSource.PlayOneShot(badAction);
                 variableManager.prisonBreak = false;
@@ -1204,6 +1205,7 @@ float stuckTimer;
                 int myNumber;
                 variableManager.prisonBreak = true;
                 variableManager.prisonBreaker = NetworkPlayerName.ToString();
+                if(variableManager.prisonBreaker == "") variableManager.prisonBreaker = variableManager.GetCPUName(gameObject);
                 goodImageBool = true;
             }
         }
@@ -1300,10 +1302,20 @@ float stuckTimer;
 
         lastPosition = transform.position;
 
-        if (stuckTimer >= 3f)
+        if (stuckTimer >= 1f)
         {
-            PushKey(3); // Sキー
             stuckTimer -= Time.deltaTime / 2f;
+            if(!isSecondTime)
+            {
+                isSecondTime = true;
+                PushKey(4);
+            }
+            else
+            {
+                isSecondTime = false;
+                transform.eulerAngles = new Vector3(transform.rotation.x, 100, transform.rotation.z);
+            }
+            PushKey(3); // Sキー
         }
     }
 
@@ -1318,6 +1330,7 @@ float stuckTimer;
         {
             goodImageBool = true;
             variableManager.gemGet = this.NetworkPlayerName.ToString();
+            if(variableManager.gemGet == "") variableManager.gemGet = variableManager.GetCPUName(gameObject);
             if (audioSource != null) audioSource.PlayOneShot(goodAction);
             variableManager.gemList[collider.gameObject.GetComponent<GemScript>().gemNumber] = 1;
             if(!variableManager.gemList.Contains(0))
@@ -1507,7 +1520,7 @@ float stuckTimer;
 
     private void OnNameChanged()
     {
-        nameText.text = NetworkPlayerName.ToString();
+        if(!isEnemy) nameText.text = NetworkPlayerName.ToString();
     }
 
     IEnumerator JumpCubeAnimation(GameObject jumpObj)
@@ -1553,11 +1566,10 @@ float stuckTimer;
 
     public override void Render()
     {
-        // 毎フレーム、ネットワーク変数の値をテキストに反映する
-        nameText.text = NetworkPlayerName.ToString();
+        if(!isEnemy) nameText.text = NetworkPlayerName.ToString();
     }
 
-        void ConsiderMove()
+    void ConsiderMove()
     {
         if (!hasExtraInput)
         {
@@ -2002,6 +2014,15 @@ float stuckTimer;
         if (UnityEngine.AI.NavMesh.SamplePosition(destination, out hit, 5.0f, UnityEngine.AI.NavMesh.AllAreas))
         {
             validDestination = hit.position;
+        }
+
+        // 移動先に到着していたら、移動処理を終了
+        Vector3 toDestination = validDestination - transform.position;
+        toDestination.y = 0f;
+
+        if (toDestination.magnitude < 1.0f)
+        {
+            return;
         }
 
         // ルート比較
