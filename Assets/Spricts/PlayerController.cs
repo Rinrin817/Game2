@@ -481,13 +481,11 @@ public class PlayerController : NetworkBehaviour
                     }
                 }
             }
-            if(missionSub != -1 && variableManager.missionSubNumber == -1 && roleNumber == 2)
+            if(missionSub != -1 && variableManager.missionSubNumber == -1 && roleNumber == 2 && canMove)
             {
                 if(missionSub == 0)
                 {
-                    /*
                     //ミッションスタート
-                    variableManager.textString = "Push any ArrowKey to set DARUMA";
                     if(pushedKey.Contains("RArrow"))
                     {
                         variableManager.missionNumber = 0;
@@ -523,7 +521,7 @@ public class PlayerController : NetworkBehaviour
                         variableManager.missionStart = true;
                         variableManager.textString = " ";
                         missionSub = -1;
-                    }*/
+                    }
                 }
             }
         }
@@ -813,6 +811,7 @@ public class PlayerController : NetworkBehaviour
 
         // 自分の画面だけの処理
         if (!Object.HasStateAuthority) return;
+        if (isEnemy) return;
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
@@ -1420,7 +1419,7 @@ public class PlayerController : NetworkBehaviour
         {
             if(roleNumber != 2)
             {
-                LookDestinationPath(180f);
+                LookDestinationPath(360f);
                 if(!bigJump)
                 {
                     bigJump = true;
@@ -1439,7 +1438,7 @@ public class PlayerController : NetworkBehaviour
             if(!isEnemy) return;
             if(roleNumber != 2)
             {
-                LookDestinationPath(180f);
+                LookDestinationPath(360f);
                 if(!bigJump)
                 {
                     bigJump = true;
@@ -1457,7 +1456,7 @@ public class PlayerController : NetworkBehaviour
         {
             if(roleNumber != 2)
             {
-                LookDestinationPath(180f);
+                LookDestinationPath(360f);
             }
             wishJump = true;
         }
@@ -1989,7 +1988,7 @@ public class PlayerController : NetworkBehaviour
         {
             if(roleNumber != 2)
             {
-                LookDestinationPath(90f);
+                LookDestinationPath(Random.Range(90f, 360f));
             }
             PushKey(2);
             return;

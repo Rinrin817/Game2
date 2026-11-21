@@ -36,7 +36,8 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     [SerializeField] private NetworkObject darumaPrefab;
     [SerializeField] private NetworkObject daruma1Prefab;
     [SerializeField] private GameObject mobileUIPanel;
-    List<NetworkObject> spawnedDarumas = new List<NetworkObject>();
+    [SerializeField] GameObject darumaTransformObj;
+    List<GameObject> spawnedDarumas = new List<GameObject>();
     [SerializeField] private NetworkObject enemyPrefab;
     public static int playerRole;
     public static int stageNumber;
@@ -93,12 +94,26 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     List<PlayerRef> nameSlotOwners = new List<PlayerRef>();
     bool nameSlotsInitialized = false;
     public Dictionary<int, int> cpuNames = new Dictionary<int, int>();
+    [Networked]
+    public int SyncedStageNumber { get; set; }
 
     public override void Spawned()
     {
-        upText.text = "";      
-        spawnTimer = 1f; 
+        upText.text = "";
+        spawnTimer = 1f;
         hasSpawnedPlayer = false;
+
+        // 部屋のStateAuthorityを持つ人がステージ番号を設定
+        if (Object.HasStateAuthority)
+        {
+            StartFusion sf = Runner.GetComponent<StartFusion>();
+
+            if (sf != null)
+            {
+                SyncedStageNumber = sf.stageNumber;
+                Debug.Log("[ステージ同期] 初期設定: " + SyncedStageNumber);
+            }
+        }
     }
 
     void SpawnPlayer()
@@ -499,22 +514,25 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             FindObjectsByType<NetworkPlayerInfo>(FindObjectsSortMode.None);
 
         // =========================================
-        // 1. オンライン戦：最初のプレイヤー配置を記憶
+        // 1. オンライン戦：新しいプレイヤーを随時登録
         // =========================================
-        if (!isCPU && !nameSlotsInitialized)
+        if (!isCPU)
         {
-            if (controllers.Length != startFusion.modePlayerCount)
-                return;
-
             PlayerController[] sortedControllers = controllers
+                .Where(x => x != null &&
+                            x.Object != null &&
+                            x.Object.IsValid)
                 .OrderBy(x => x.Object.Id)
                 .ToArray();
 
-            nameSlotOwners.Clear();
-
             foreach (var controller in sortedControllers)
             {
-                nameSlotOwners.Add(controller.Object.InputAuthority);
+                PlayerRef playerRef = controller.Object.InputAuthority;
+
+                if (!nameSlotOwners.Contains(playerRef))
+                {
+                    nameSlotOwners.Add(playerRef);
+                }
             }
 
             nameSlotsInitialized = true;
@@ -754,7 +772,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             return;
         }
 
-        stageNumber = startFusion.stageNumber;
+        stageNumber = SyncedStageNumber;
         
         GameObject Stage1Obj = null;
         GameObject Stage2Obj = null;   
@@ -983,27 +1001,27 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 missionTimeCount = 0;
                 if(missionNumber == 0)
                 {
-                    if (playerController.roleNumber == 2)
+                    if (playerController.roleNumber == 2 || runner.GameMode == GameMode.Single)
                     {
                         RPC_StartMission(0, missionSubNumber);
                     }
                 }
                 if(missionNumber == 1)
                 {
-                    if (playerController.roleNumber == 2)
+                    if (playerController.roleNumber == 2 || runner.GameMode == GameMode.Single)
                     {
                         RPC_StartMission(1, 0);
                     }
                 }
                 if(missionNumber == 2)
                 {
-                    if (playerController.roleNumber == 2)
+                    if (playerController.roleNumber == 2 || runner.GameMode == GameMode.Single)
                     {
                         RPC_StartMission(2, missionSubNumber);
                     }
                 }
             }
-            if(missionTimeCount >= missionTimeCountLimit)
+            if(missionTimeCount >= missionTimeCountLimit && missionTimeCountLimit >= 1)
             {
                 if(playerController.roleNumber == 2)
                 {
@@ -1254,15 +1272,21 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         CoolTimeImageParent.GetComponent<CoolTimeScript>().Reset();
         missionTimeCount = 0;
         missionNumber = RPCmissionNumber;
-        Debug.Log(missionNumber.ToString());
+        Debug.Log("[ミッションスタート]" + missionNumber.ToString());
+        runner = FindFirstObjectByType<NetworkRunner>();
         // すでに古いだるまが残っていれば削除
         foreach (var d in spawnedDarumas)
         {
-            if (d != null) Runner.Despawn(d);
+            if (d == null) continue;
+
+            if (runner.GameMode == GameMode.Single)
+                Destroy(d);
+            else
+                Runner.Despawn(d.GetComponent<NetworkObject>());
         }
         spawnedDarumas.Clear();
 
-        if(!Object.HasStateAuthority) return;
+        if (runner.GameMode != GameMode.Single && !Object.HasStateAuthority) return;
 
         if (missionNumber == 0)
         {
@@ -1321,8 +1345,19 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 }   
             }
             
-            NetworkObject obj = Runner.Spawn(darumaPrefab, spawnPos, spawnRot);
-            spawnedDarumas.Add(obj);
+            if(runner.GameMode == GameMode.Single)
+            {
+                Debug.Log("だるまスポーン");
+                GameObject obj = Instantiate(darumaPrefab, spawnPos, spawnRot).gameObject;
+                darumaTransformObj.transform.position = spawnPos;
+                darumaTransformObj.transform.rotation = spawnRot;
+                spawnedDarumas.Add(obj);
+            }
+            else
+            {
+                NetworkObject obj = Runner.Spawn(darumaPrefab, spawnPos, spawnRot);
+                spawnedDarumas.Add(obj.gameObject);   
+            }
         }
         if (missionNumber == 1)
         {
@@ -1333,8 +1368,18 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             if(playerCount == 13) missionTimeCountLimit = 20;
             Vector3 spawnPos = Vector3.up * 50f;
             Quaternion spawnRot = Quaternion.identity;
-            NetworkObject obj = Runner.Spawn(daruma1Prefab, spawnPos, spawnRot);
-            spawnedDarumas.Add(obj);
+            if(runner.GameMode == GameMode.Single)
+            {
+                GameObject obj = Instantiate(darumaPrefab, spawnPos, spawnRot).gameObject;
+                darumaTransformObj.transform.position = spawnPos;
+                darumaTransformObj.transform.rotation = spawnRot;
+                spawnedDarumas.Add(obj);
+            }
+            else
+            {
+                NetworkObject obj = Runner.Spawn(darumaPrefab, spawnPos, spawnRot);
+                spawnedDarumas.Add(obj.gameObject);   
+            }
         }
         if (missionNumber == 2)
         {
@@ -1357,7 +1402,12 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         clearMission = true;
         foreach (var d in spawnedDarumas)
         {
-            if (d != null) Runner.Despawn(d);
+            if (d == null) continue;
+
+            if (runner.GameMode == GameMode.Single)
+                Destroy(d);
+            else
+                Runner.Despawn(d.GetComponent<NetworkObject>());
         }
         spawnedDarumas.Clear();
         playerControllers = FindObjectsByType<PlayerController>(FindObjectsSortMode.None).OrderBy(x => x.GetComponent<NetworkObject>().Id).ToArray();
