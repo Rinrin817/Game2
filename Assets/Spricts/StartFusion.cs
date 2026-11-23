@@ -78,7 +78,7 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
     public int stageNumber;
     Transform childTransform;
     GameObject parentObj;
-    bool isCPUMode;
+    public bool isCPUMode;
 
     public int thiefSkinNumber
     {
@@ -164,8 +164,9 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
                 SessionProperties = new Dictionary<string, SessionProperty>()
                 {
-                    { "GameStartedProp", 0 }, // 初期値 0 で事前登録
-                    { "RoleTimerProp", 0 }     // 初期値 0 で事前登録
+                    { "GameStartedProp", 0 },
+                    { "RoleTimerProp", 0 },
+                    { "IsCPUModeProp", 0 }
                 }
             };
             var result = await runner.StartGame(args);
@@ -183,6 +184,19 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
 
             runner.LoadScene(SceneRef.FromIndex(2));
         }
+    }
+
+    public void SetOnlineCPUMode(bool value)
+    {
+        if (runner == null || !runner.IsRunning) return;
+        if (!runner.IsSharedModeMasterClient) return;
+
+        isCPUMode = value;
+
+        var props = new Dictionary<string, SessionProperty>();
+        props["IsCPUModeProp"] = value ? 1 : 0;
+
+        runner.SessionInfo.UpdateCustomProperties(props);
     }
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
@@ -262,9 +276,6 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
         {
             // シーン内に引っ越してきた NetworkGameState を探す
             NetworkGameState foundState = FindFirstObjectByType<NetworkGameState>();
-            
-            // Unityの古いバージョンを使っている場合は、以下を試してください
-            // NetworkGameState foundState = FindObjectOfType<NetworkGameState>();
 
             //Debug.Log("foundState = " + (foundState != null).ToString());
             if (foundState != null)
@@ -290,6 +301,12 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
                     {
                         roleExplainTime = (float)timerProp;
                     }
+                }
+
+                if (runner.SessionInfo.IsValid &&
+                    runner.SessionInfo.Properties.TryGetValue("IsCPUModeProp", out var cpuProp))
+                {
+                    isCPUMode = (int)cpuProp == 1;
                 }
             }
         }
@@ -334,8 +351,15 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
         }
         if(GameObject.Find("CPUButton") != null)
         {
-            GameObject.Find("CPUButton").GetComponent<Button>().onClick.RemoveAllListeners();
-            GameObject.Find("CPUButton").GetComponent<Button>().onClick.AddListener(StartCPU);
+            if (!runner.IsSharedModeMasterClient)
+            {
+                GameObject.Find("CPUButton").SetActive(false);
+            }
+            else
+            {
+                GameObject.Find("CPUButton").GetComponent<Button>().onClick.RemoveAllListeners();
+                GameObject.Find("CPUButton").GetComponent<Button>().onClick.AddListener(StartCPU);   
+            }
         }
         if(GameObject.Find("BaseCanvas") != null && Stage1Button == null)
         {
@@ -353,21 +377,6 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
             Stage2Button.onClick.AddListener(ChangeToStage2);
         }
 
-        // Debug.Log(State != null && State.Object != null && State.Object.IsValid);
-        /*
-        if (!gameStarted && runner != null && runner.ActivePlayers != null && runner.IsSharedModeMasterClient && runner.ActivePlayers.Count() >= modePlayerCount && State != null && State.Object != null && State.Object.IsValid)
-        {
-            Debug.Log("start");
-            gameStarted = true;
-            
-            var props = new Dictionary<string, SessionProperty>();
-            props["GameStartedProp"] = 1;
-            props["RoleTimerProp"] = (SessionProperty)roleExplainTime; // 修正
-            runner.SessionInfo.UpdateCustomProperties(props);
-
-            Invoke("AllPlayerStartGame", 2f);
-        }
-        */
         if(cameraObj != null) cameraObj.transform.rotation *= Quaternion.Euler(0f, 0.05f, 0f);
         if (modeText != null && explainText != null)
         {
@@ -854,84 +863,72 @@ public class StartFusion : MonoBehaviour, INetworkRunnerCallbacks
         if(StageChangeImage.activeSelf) StageChangeImage.SetActive(false);
         else StageChangeImage.SetActive(true);
     }
-    
-    public async void StartCPU()
+
+    public void StartCPU()
     {
         if (isLeaving) return;
+
+        // Sharedモードのマスターだけが開始できる
+        if (runner == null ||
+            !runner.IsRunning ||
+            runner.GameMode != GameMode.Shared ||
+            !runner.IsSharedModeMasterClient)
+        {
+            return;
+        }
+
         isLeaving = true;
         isCPUMode = true;
 
         audioSource.PlayOneShot(closeAudio, 0.5f);
 
-        // StartFusionが付いているGameObjectを保存
-        GameObject ownerObject = gameObject;
+        // CPUモードであることを全員に伝える
+        var props = new Dictionary<string, SessionProperty>();
+        props["IsCPUModeProp"] = 1;
+        props["GameStartedProp"] = 1;
+        props["RoleTimerProp"] = (SessionProperty)roleExplainTime;
 
-        NetworkRunner oldRunner = runner;
+        bool result = runner.SessionInfo.UpdateCustomProperties(props);
+        Debug.Log($"[CPUモード送信] 成功={result}");
 
-        if (oldRunner != null)
+        if (result)
         {
-            // GameObjectを破棄せずにRunnerを終了
-            if (oldRunner.IsRunning)
-            {
-                await oldRunner.Shutdown(destroyGameObject: false);
-            }
-
-            // 古いRunnerコンポーネントだけを削除
-            Destroy(oldRunner);
-            runner = null;
-
-            // Destroyの実行を待つ
-            await Task.Yield();
+            StartCoroutine(WaitForCPUPropertyUpdate());
         }
-
-        // StartFusionと同じGameObjectに新しいRunnerを追加
-        runner = ownerObject.AddComponent<NetworkRunner>();
-
-        // シーンマネージャーを取得・生成
-        NetworkSceneManagerDefault sceneManager =
-            ownerObject.GetComponent<NetworkSceneManagerDefault>();
-
-        if (sceneManager == null)
+        else
         {
-            sceneManager =
-                ownerObject.AddComponent<NetworkSceneManagerDefault>();
-        }
-
-        // 既存のStartFusionをコールバックに登録
-        runner.AddCallbacks(this);
-
-        Debug.Log("[CPU] StartGame開始");
-
-        var result = await runner.StartGame(new StartGameArgs
-        {
-            GameMode = GameMode.Single,
-            SceneManager = sceneManager
-        });
-
-        Debug.Log($"[CPU] StartGame終了: Ok={result.Ok}, Reason={result.ShutdownReason}");
-
-        if (!result.Ok)
-        {
-            Debug.LogError("[CPU] セッション開始失敗");
-            gameStarted = false;
+            Debug.LogError("[CPUモード送信] 更新リクエストに失敗しました");
             isLeaving = false;
-            return;
+        }
+    }
+
+    System.Collections.IEnumerator WaitForCPUPropertyUpdate()
+    {
+        // Photon Cloudから更新完了の通知が届くまで待つ
+        while (runner != null && runner.IsRunning && !runner.SessionInfo.IsValid)
+        {
+            yield return null;
         }
 
-        gameStarted = true;
+        if (runner == null || !runner.IsRunning)
+        {
+            isLeaving = false;
+            yield break;
+        }
 
-        // CPUモード用のNetworkGameStateを生成
-        State = runner
-            .Spawn(networkGameStatePrefab, Vector3.zero, Quaternion.identity)
-            .GetComponent<NetworkGameState>();
+        if (runner.SessionInfo.Properties.TryGetValue("IsCPUModeProp", out var value)
+            && (int)value == 1)
+        {
+            Debug.Log("[CPUモード同期] 更新完了");
 
-        Debug.Log($"[CPU] NetworkGameState生成: {State != null}");
+            gameStarted = true;
+            AllPlayerStartGame();
+        }
+        else
+        {
+            Debug.LogError("[CPUモード同期] 更新後も値が1になっていません");
+        }
 
-        Debug.Log("[CPU] シーン遷移開始");
-
-        runner.LoadScene(SceneRef.FromIndex(1));
-
-        Debug.Log("[CPU] LoadScene呼び出し終了");
         isLeaving = false;
     }
 

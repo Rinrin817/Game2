@@ -62,7 +62,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     GameObject[] prisonObjects;
     PlayerController[] playerControllers;
     PlayerController playerController;
-    EnemyPlayerController[] enemyPlayerController;
     int[] roleArray;
     int random;
     bool isLeaving;
@@ -87,6 +86,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     bool didCamera = false;
     bool gemBool = false;
     private bool hasSpawnedPlayer = false; // 二重実行防止用
+    private bool isWaitAndAssignRunning = false;
     public bool isRoleChange;
     bool hasSpawnedEnemies = false;
     int enemyCount;
@@ -96,6 +96,8 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     public Dictionary<int, int> cpuNames = new Dictionary<int, int>();
     [Networked]
     public int SyncedStageNumber { get; set; }
+    GameObject Stage1Obj;
+    GameObject Stage2Obj;   
 
     public override void Spawned()
     {
@@ -121,100 +123,118 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         gemBool = false;
         Debug.Log("spawnPlayer!!");
         NetworkRunner runner = FindFirstObjectByType<NetworkRunner>();
-        if (runner == null) 
+        if (runner == null)
         {
             Debug.Log("runner == null");
+            hasSpawnedPlayer = false;
             return;
         }
+        // 他クライアントは、マスターのゲーム開始通知が届くまで待機
+        if (runner.GameMode == GameMode.Shared && !runner.IsSharedModeMasterClient)
+        {
+            if (!runner.SessionInfo.IsValid ||
+                !runner.SessionInfo.Properties.TryGetValue("GameStartedProp", out var startedProp) ||
+                (int)startedProp != 1)
+            {
+                hasSpawnedPlayer = false;
+                return;
+            }
 
-        if (runner.GetPlayerObject(runner.LocalPlayer) != null)
+            if (runner.SessionInfo.Properties.TryGetValue("IsCPUModeProp", out var cpuProp))
+            {
+                StartFusion sf = runner.GetComponent<StartFusion>();
+                if (sf != null)
+                    sf.isCPUMode = (int)cpuProp == 1;
+                Debug.Log($"[CPU同期] isCPUMode={sf.isCPUMode}");
+                Debug.Log($"[CPU同期] IsCPUModeProp取得成功={runner.SessionInfo.Properties.TryGetValue("IsCPUModeProp", out var value)}");
+                if (runner.SessionInfo.Properties.TryGetValue("IsCPUModeProp", out var value2))
+                    Debug.Log($"[CPU同期] プロパティ値={value2}");
+
+            }
+        }
+
+        NetworkObject obj = runner.GetPlayerObject(runner.LocalPlayer);
+        if (obj != null)
         {
             Debug.Log("runner.GetPlayerObject(runner.LocalPlayer) != null");
+            StartFusion existingStartFusion = runner.GetComponent<StartFusion>();
+            if (existingStartFusion != null && existingStartFusion.isCPUMode)
+                playerCount = existingStartFusion.modePlayerCount;
+            else
+                playerCount = runner.ActivePlayers.Count();
+
+            StartWaitAndAssign(obj, runner);
             return;
         }
 
         index = runner.LocalPlayer.PlayerId;
         Vector3 targetPosition = Vector3.zero;
-        if(index == 0)
-        {
-            targetPosition = new Vector3(0, 15, 0);
-        }
-        if(index == 1)
-        {
-            targetPosition = new Vector3(0, 15, 5);
-        }
-        if(index == 2)
-        {
-            targetPosition = new Vector3(0, 15, -5);
-        }
-        if(index == 3)
-        {
-            targetPosition = new Vector3(0, 15, 10);
-        }
-        if(index == 4)
-        {
-            targetPosition = new Vector3(0, 15, -10);
-        }
-        if(index == 5)
-        {
-            targetPosition = new Vector3(5, 15, 0);
-        }
-        if(index == 6)
-        {
-            targetPosition = new Vector3(5, 15, 5);
-        }
-        if(index == 7)
-        {
-            targetPosition = new Vector3(5, 15, -5);
-        }
-        if(index == 8)
-        {
-            targetPosition = new Vector3(5, 15, 10);
-        }
-        if(index == 9)
-        {
-            targetPosition = new Vector3(5, 15, -10);
-        }
-        if(index == 10)
-        {
-            targetPosition = new Vector3(-5, 15, -5);
-        }
-        if(index == 11)
-        {
-            targetPosition = new Vector3(-5, 15, 10);
-        }
-        if(index == 12)
-        {
-            targetPosition = new Vector3(-5, 15, -10);
-        }
-        var obj = runner.Spawn(
+        if (index == 0) targetPosition = new Vector3(0, 15, 0);
+        if (index == 1) targetPosition = new Vector3(0, 15, 5);
+        if (index == 2) targetPosition = new Vector3(0, 15, -5);
+        if (index == 3) targetPosition = new Vector3(0, 15, 10);
+        if (index == 4) targetPosition = new Vector3(0, 15, -10);
+        if (index == 5) targetPosition = new Vector3(5, 15, 0);
+        if (index == 6) targetPosition = new Vector3(5, 15, 5);
+        if (index == 7) targetPosition = new Vector3(5, 15, -5);
+        if (index == 8) targetPosition = new Vector3(5, 15, 10);
+        if (index == 9) targetPosition = new Vector3(5, 15, -10);
+        if (index == 10) targetPosition = new Vector3(-5, 15, -5);
+        if (index == 11) targetPosition = new Vector3(-5, 15, 10);
+        if (index == 12) targetPosition = new Vector3(-5, 15, -10);
+
+        obj = runner.Spawn(
             playerPrefab.GetComponent<NetworkObject>(),
             targetPosition,
             Quaternion.identity,
             runner.LocalPlayer
         );
         runner.SetPlayerObject(runner.LocalPlayer, obj);
-        if (!hasSpawnedEnemies && runner.GameMode == GameMode.Single)
+        Debug.Log($"[PlayerObject登録後] {runner.GetPlayerObject(runner.LocalPlayer)}");
+
+        StartFusion startFusion = runner.GetComponent<StartFusion>();
+        if (startFusion == null)
+        {
+            Debug.LogError("[エラー] runnerにStartFusionがありません");
+            return;
+        }
+
+        if (!hasSpawnedEnemies && startFusion.isCPUMode && runner.IsSharedModeMasterClient)
         {
             hasSpawnedEnemies = true;
-            playerCount = runner.gameObject.GetComponent<StartFusion>().modePlayerCount;
-            enemyCount = playerCount - 1;
+            playerCount = startFusion.modePlayerCount;
+            enemyCount = playerCount - runner.ActivePlayers.Count();
+            enemyCount = Mathf.Max(0, enemyCount);
             SpawnEnemies(runner, enemyCount);
         }
 
         if (runner.GameMode == GameMode.Single || runner.IsSharedModeMasterClient)
         {
-            var myPlayer = obj.GetComponent<PlayerController>();
+            PlayerController myPlayer = obj.GetComponent<PlayerController>();
             if (myPlayer != null)
             {
-                if (runner.GameMode == GameMode.Single) playerController = myPlayer;
+                if (runner.GameMode == GameMode.Single)
+                    playerController = myPlayer;
+
                 myPlayer.syncedSeed = Random.Range(1, 100000);
                 Debug.Log($"[Seed設定] syncedSeed: {myPlayer.syncedSeed}");
             }
         }
 
-        playerCount = runner.GetComponent<StartFusion>().modePlayerCount;
-        StartCoroutine(WaitAndAssign(obj.GetComponent<NetworkObject>(), runner));
+        playerCount = startFusion.isCPUMode
+            ? startFusion.modePlayerCount
+            : runner.ActivePlayers.Count();
+
+        StartWaitAndAssign(obj, runner);
+    }
+
+    void StartWaitAndAssign(NetworkObject netObj, NetworkRunner runner)
+    {
+        if (isWaitAndAssignRunning)
+            return;
+
+        isWaitAndAssignRunning = true;
+        StartCoroutine(WaitAndAssign(netObj, runner));
     }
 
     void SpawnEnemies(NetworkRunner runner, int enemyCount)
@@ -231,9 +251,9 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             return;
         }
 
-        if (runner.GameMode != GameMode.Single)
+        if (runner.GameMode == GameMode.Shared &&
+            !runner.IsSharedModeMasterClient)
         {
-            Debug.LogWarning("[CPU] オフライン戦ではないためEnemyを生成しません");
             return;
         }
 
@@ -276,161 +296,142 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
 
     IEnumerator WaitAndAssign(NetworkObject netObj, NetworkRunner runner)
     {
-        while (netObj != null && !netObj.HasStateAuthority)
+        // Player Objectの登録が反映されるまで、ローカルプレイヤーのものを取得し直す
+        while (runner != null && runner.IsRunning && (netObj == null || !netObj.IsValid))
         {
-            yield return null;
+            netObj = runner.GetPlayerObject(runner.LocalPlayer);
+            if (netObj == null || !netObj.IsValid)
+                yield return null;
         }
 
-        while (FindObjectsByType<PlayerController>(FindObjectsSortMode.None).Length != playerCount)
+        if (runner == null || !runner.IsRunning || netObj == null || !netObj.IsValid)
         {
-            yield return null;
+            Debug.LogError("[エラー] ローカルプレイヤーのNetworkObjectを取得できませんでした");
+            isWaitAndAssignRunning = false;
+            yield break;
+        }
+
+        // StateAuthorityやisEnemyで判定せず、Player Objectから自分自身を特定する
+        PlayerController localPlayerController = netObj.GetComponent<PlayerController>();
+        if (localPlayerController == null)
+        {
+            Debug.LogError("[エラー] ローカルPlayer ObjectにPlayerControllerがありません");
+            isWaitAndAssignRunning = false;
+            yield break;
+        }
+
+        if (!runner.IsRunning)
+        {
+            Debug.LogWarning("[エラー] runnnerが実行されていません");
+            isWaitAndAssignRunning = false;
+            yield break;
+        }
+
+        Debug.Log($"[WaitAndAssign開始] LocalPlayer={runner.LocalPlayer}, PlayerObject={runner.GetPlayerObject(runner.LocalPlayer)}, playerCount={playerCount}, 現在の生成数={FindObjectsByType<PlayerController>(FindObjectsSortMode.None).Length}");
+        // CPUを含む全プレイヤーの生成を待機
+        while (runner.IsRunning && FindObjectsByType<PlayerController>(FindObjectsSortMode.None).Length != playerCount)
+        {
+            // Debug.Log("[待機]" + FindObjectsByType<PlayerController>(FindObjectsSortMode.None).Length.ToString() + " " + playerCount.ToString());
+            yield return null;   
         }
 
         Debug.Log("[確認2] 待機終了");
 
-        if (runner == null)
-        {
-            Debug.LogError("[エラー] WaitAndAssign内のrunnerがnullです");
-            yield break;
-        }
-
         StartFusion startFusion = runner.GetComponent<StartFusion>();
-
         if (startFusion == null)
         {
             Debug.LogError("[エラー] runnerにStartFusionがありません");
+            isWaitAndAssignRunning = false;
             yield break;
         }
 
         Debug.Log($"[確認3] StartFusion取得成功 / modePlayerCount={startFusion.modePlayerCount}");
 
         int modePlayerCount = startFusion.modePlayerCount;
-
         if (modePlayerCount == 1)
         {
             roles = new List<int> { 0 };
             canMissionTimeLimit = 20f;
-            for(int i = 0; i < roleObj.Length; i ++)
-            {
+            for (int i = 0; i < roleObj.Length; i++)
                 roleObj[i].SetActive(true);
-            }
         }
-        if (modePlayerCount == 2)
+        else if (modePlayerCount == 2)
         {
             roles = new List<int> { 0, 2 };
             canMissionTimeLimit = 20f;
-            for(int i = 0; i < roleObj.Length; i ++)
-            {
+            for (int i = 0; i < roleObj.Length; i++)
                 roleObj[i].SetActive(true);
-            }
         }
-        if (modePlayerCount == 5)
+        else if (modePlayerCount == 5)
         {
             roles = new List<int> { 0, 0, 0, 1, 2 };
             canMissionTimeLimit = 20f;
         }
-        if (modePlayerCount == 9)
+        else if (modePlayerCount == 9)
         {
             roles = new List<int> { 0, 0, 0, 0, 0, 0, 1, 1, 2 };
             canMissionTimeLimit = 16f;
         }
-        if (modePlayerCount == 13)
+        else if (modePlayerCount == 13)
         {
             roles = new List<int> { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2 };
             canMissionTimeLimit = 12f;
         }
         canMissionTimeLimit2 = canMissionTimeLimit;
 
-        playerControllers = FindObjectsByType<PlayerController>(FindObjectsSortMode.None).OrderBy(x => x.GetComponent<NetworkObject>().Id).ToArray();
+        playerControllers = FindObjectsByType<PlayerController>(FindObjectsSortMode.None)
+            .OrderBy(x => x.GetComponent<NetworkObject>().Id)
+            .ToArray();
+
+        // ローカルプレイヤーを直接保存する。HasStateAuthority/isEnemyによる検索は行わない。
+        playerController = localPlayerController;
+        playerNameCanvas = playerController.transform.GetChild(0).gameObject;
+        index = System.Array.IndexOf(playerControllers, playerController);
+        Debug.Log($"[ローカルプレイヤー設定] index={index}, HasStateAuthority={netObj.HasStateAuthority}");
 
         Debug.Log("[確認3] seed 待機開始");
-
-        while (seed == 0)
+        while (seed == 0 && runner.IsRunning)
         {
-            foreach (var player in playerControllers)
+            foreach (PlayerController player in playerControllers)
             {
-                if (player.syncedSeed != 0)
+                if (player != null && player.syncedSeed != 0)
                 {
                     seed = player.syncedSeed;
                     break;
                 }
             }
-            yield return null;
+            if (seed == 0)
+                yield return null;
         }
 
-        // 2. 全員共通のシード値で役職リストをシャッフル
+        if (!runner.IsRunning)
+        {
+            isWaitAndAssignRunning = false;
+            yield break;
+        }
+
         Random.InitState(seed);
         roles = roles.OrderBy(x => Random.value).ToList();
-
-        /*
-        if(playerCount == 1 || playerCount == 2 || playerCount == 5 || playerCount == 9 || playerCount == 13)
-        {
-            roleArray = new int[playerCount];
-            for(int i = 0; i < playerCount; i++)
-            {
-                int finalRole = 0;
-                if(roles.Count == playerCount) finalRole = roles[i];
-                roleArray[i] = finalRole;
-
-                // 名簿の「i番目」のプレイヤーが、自分自身（InputAuthority持ち）か直接判定する
-                if(playerControllers[i].HasInputAuthority)
-                {
-                    // ★ここで後々のために自分のコントローラーを代入して保持する
-                    playerController = playerControllers[i];
-                    playerNameCanvas = playerController.gameObject.transform.GetChild(0).gameObject;
-                    index = i;
-
-                    // 自分の役職を代入
-                    playerController.roleNumber = finalRole;
-                    playerController.canMove = false;
-                    
-                    Debug.Log($"自分（index: {index}）に正しい役職 {finalRole} を配布し、変数に保存しました");
-                }
-            }
-        }
-        */
         roleArray = new int[playerControllers.Length];
 
         for (int i = 0; i < playerControllers.Length; i++)
         {
             int finalRole = 0;
-
             if (roles.Count == playerControllers.Length)
-            {
                 finalRole = roles[i];
-            }
 
             roleArray[i] = finalRole;
 
-            // CPUモードでは全プレイヤーに役職を設定する
-            if (runner.GameMode == GameMode.Single)
+            // Shared Modeでは各オブジェクトのStateAuthorityを持つクライアントがNetworked変数を設定
+            if (playerControllers[i].HasStateAuthority)
             {
                 playerControllers[i].roleNumber = finalRole;
                 playerControllers[i].canMove = false;
             }
-
-            bool isLocalPlayer = false;
-
-            if (runner.GameMode == GameMode.Single)
-            {
-                isLocalPlayer = playerControllers[i].gameObject.name.Contains("Player");
-            }
-            else
-            {
-                isLocalPlayer = playerControllers[i].HasInputAuthority;
-            }
-
-            if (isLocalPlayer)
-            {
-                playerController = playerControllers[i];
-                playerNameCanvas = playerController.transform.GetChild(0).gameObject;
-                index = i;
-                playerController.roleNumber = finalRole;
-                Debug.Log($"自分（index: {index}）に正しい役職 {finalRole} を配布し、変数に保存しました");
-            }
         }
 
         setTextString();
+        isWaitAndAssignRunning = false;
     }
 
     public void RequestSetActiveItem()
@@ -505,7 +506,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         StartFusion startFusion = currentRunner.GetComponent<StartFusion>();
         if (startFusion == null) return;
 
-        bool isCPU = currentRunner.GameMode == GameMode.Single;
+        bool isCPU = startFusion.isCPUMode;
 
         PlayerController[] controllers =
             FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
@@ -632,25 +633,22 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             // =========================================
             // 4. 名前の設定
             // =========================================
-            TextMeshProUGUI[] nameTexts =
-                imageObj[i].GetComponentsInChildren<TextMeshProUGUI>(true);
+            TextMeshProUGUI[] nameTexts = imageObj[i].GetComponentsInChildren<TextMeshProUGUI>(true);
+
+            bool isPlayerObject = currentRunner.ActivePlayers.Any(player => currentRunner.GetPlayerObject(player) == currentController.Object);
 
             foreach (var textComp in nameTexts)
             {
                 if (textComp.gameObject.name != "NameText")
                     continue;
 
-                if (isCPU && currentController.gameObject.name.StartsWith("Enemy_"))
+                if (isCPU && !isPlayerObject)
                 {
                     textComp.text = GetCPUName(currentController.gameObject);
                 }
-                else
+                else if (matchedPlayerInfo != null)
                 {
-                    // 通常プレイヤーの名前
-                    if (matchedPlayerInfo != null)
-                    {
-                        textComp.text = matchedPlayerInfo.PlayerName.ToString();
-                    }
+                    textComp.text = matchedPlayerInfo.PlayerName.ToString();
                 }
             }
         }
@@ -658,16 +656,12 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
 
     public string GetCPUName(GameObject enemy)
     {
-        int id = enemy.GetInstanceID();
+        NetworkObject netObj = enemy.GetComponent<NetworkObject>();
+        if (netObj == null || !netObj.IsValid) return "CPU";
 
-        if (!cpuNames.ContainsKey(id))
-        {
-            cpuNames[id] = Random.Range(0, 100);
-        }
-
-        return "CPU〆" + cpuNames[id];
+        int id = netObj.Id.GetHashCode();
+        return "CPU〆" + ((id % 100 + 100) % 100);
     }
-
 
     void Awake()
     {
@@ -710,16 +704,25 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         {
             mobileUIPanel.SetActive(false); // PCのブラウザなら非表示
         }
+
+        GameObject parentObj = GameObject.Find("AllStages");
+        Transform childTransform = parentObj.transform.Find("Stage1");
+        Stage1Obj = childTransform.gameObject;
+        childTransform = parentObj.transform.Find("Stage2");
+        Stage2Obj = childTransform.gameObject;
+        Stage1Obj.SetActive(false);
+        Stage2Obj.SetActive(false);
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (spawnTimer > 0f)
+        if (!hasSpawnedPlayer)
         {
-            spawnTimer -= Time.deltaTime;
+            if (spawnTimer > 0f)
+                spawnTimer -= Time.deltaTime;
 
-            if (spawnTimer <= 0f && !hasSpawnedPlayer)
+            if (spawnTimer <= 0f)
             {
                 hasSpawnedPlayer = true;
                 SpawnPlayer();
@@ -743,26 +746,36 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         }
 
         PlayerController[] controllers =
-        FindObjectsByType<PlayerController>(FindObjectsSortMode.None)
-        .OrderBy(c => c.Object.Id)
-        .ToArray();
+            FindObjectsByType<PlayerController>(FindObjectsSortMode.None)
+            .Where(c => c != null &&
+                        c.Object != null &&
+                        c.Object.IsValid)
+            .OrderBy(c => c.Object.Id)
+            .ToArray();
 
         PlayerObj.Clear();
 
-        foreach (var controller in controllers)
+        foreach (PlayerController controller in controllers)
         {
             PlayerObj.Add(controller.gameObject);
         }
-        if (PlayerObj.Count != playerCount)
+
+        if (startFusion.isCPUMode)
+        {
+            playerCount = startFusion.modePlayerCount;
+        }
+        else
         {
             playerCount = runner.ActivePlayers.Count();
-            Debug.Log("playerCountを設定");
-            // return;   
         }
 
         if (playerController == null)
         {
             Debug.LogWarning("[Update停止] playerControllerがnull");
+            isWaitAndAssignRunning = false;
+            StartWaitAndAssign(runner.GetPlayerObject(runner.LocalPlayer), runner);
+            if(playerControllers == null) Debug.Log("全部null");
+            else Debug.Log(playerControllers.Length.ToString());
             return;
         }
 
@@ -774,13 +787,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
 
         stageNumber = SyncedStageNumber;
         
-        GameObject Stage1Obj = null;
-        GameObject Stage2Obj = null;   
-        GameObject parentObj = GameObject.Find("AllStages");
-        Transform childTransform = parentObj.transform.Find("Stage1");
-        Stage1Obj = childTransform.gameObject;
-        childTransform = parentObj.transform.Find("Stage2");
-        Stage2Obj = childTransform.gameObject;
         if(stageNumber == 0)
         {
             stageNumber = 1;
@@ -1001,21 +1007,21 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 missionTimeCount = 0;
                 if(missionNumber == 0)
                 {
-                    if (playerController.roleNumber == 2 || runner.GameMode == GameMode.Single)
+                    if (playerController.roleNumber == 2 || startFusion.isCPUMode)
                     {
                         RPC_StartMission(0, missionSubNumber);
                     }
                 }
                 if(missionNumber == 1)
                 {
-                    if (playerController.roleNumber == 2 || runner.GameMode == GameMode.Single)
+                    if (playerController.roleNumber == 2 || startFusion.isCPUMode)
                     {
                         RPC_StartMission(1, 0);
                     }
                 }
                 if(missionNumber == 2)
                 {
-                    if (playerController.roleNumber == 2 || runner.GameMode == GameMode.Single)
+                    if (playerController.roleNumber == 2 || startFusion.isCPUMode)
                     {
                         RPC_StartMission(2, missionSubNumber);
                     }
@@ -1023,22 +1029,12 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             }
             if(missionTimeCount >= missionTimeCountLimit && missionTimeCountLimit >= 1)
             {
-                if(playerController.roleNumber == 2)
+                if (HasStateAuthority && !gameEndSent)
                 {
-                    isFinish = 0;   
-                    runner.gameObject.GetComponent<StartFusion>().gemCount += 5;
-                    runner.gameObject.GetComponent<StartFusion>().SaveData();
-                    LeaveRoom();
-                    return;
+                    gameEndSent = true;
+                    RPC_GameEnd(3);
                 }
-                else
-                {
-                    isFinish = 1;
-                    runner.gameObject.GetComponent<StartFusion>().gemCount += 5;
-                    runner.gameObject.GetComponent<StartFusion>().SaveData();
-                    LeaveRoom();
-                    return;
-                }
+                return;
             }
             if(clearMission)
             {
@@ -1169,6 +1165,12 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 else if(playerController.roleNumber == 0) isFinish = 0;
                 else isFinish = 1;
                 break;
+
+            // だるまミッション
+            case 3:
+                if(playerController.roleNumber == 1) isFinish = 0; // だるま勝利
+                else isFinish = 1;
+                break;
         }
 
         // 各プレイヤーの報酬を保存
@@ -1274,6 +1276,30 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         missionNumber = RPCmissionNumber;
         Debug.Log("[ミッションスタート]" + missionNumber.ToString());
         runner = FindFirstObjectByType<NetworkRunner>();
+
+        if (missionNumber == 0)
+        {
+            if (playerCount == 1 || playerCount == 2) missionTimeCountLimit = 30;
+            if (playerCount == 5) missionTimeCountLimit = 20;
+            if (playerCount == 9 || playerCount == 13) missionTimeCountLimit = 10;
+        }
+        else if (missionNumber == 1)
+        {
+            if (playerCount == 1 || playerCount == 2) missionTimeCountLimit = 50;
+            if (playerCount == 5) missionTimeCountLimit = 40;
+            if (playerCount == 9) missionTimeCountLimit = 30;
+            if (playerCount == 13) missionTimeCountLimit = 20;
+        }
+        else if (missionNumber == 2)
+        {
+            if (playerCount == 1) missionTimeCountLimit = 30;
+            if (playerCount == 2 || playerCount == 5) missionTimeCountLimit = 50;
+            if (playerCount == 9) missionTimeCountLimit = 22;
+            if (playerCount == 13) missionTimeCountLimit = 15;
+        }
+
+        if (Runner.GameMode != GameMode.Single && !Object.HasStateAuthority) return;
+
         // すでに古いだるまが残っていれば削除
         foreach (var d in spawnedDarumas)
         {
@@ -1286,15 +1312,8 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         }
         spawnedDarumas.Clear();
 
-        if (runner.GameMode != GameMode.Single && !Object.HasStateAuthority) return;
-
         if (missionNumber == 0)
         {
-            if(playerCount == 1) missionTimeCountLimit = 30;
-            if(playerCount == 2) missionTimeCountLimit = 30;
-            if(playerCount == 5) missionTimeCountLimit = 20;
-            if(playerCount == 9) missionTimeCountLimit = 10;
-            if(playerCount == 13) missionTimeCountLimit = 10;
             Vector3 spawnPos = Vector3.zero;
             Quaternion spawnRot = Quaternion.identity;
 
@@ -1361,11 +1380,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         }
         if (missionNumber == 1)
         {
-            if(playerCount == 1) missionTimeCountLimit = 50;
-            if(playerCount == 2) missionTimeCountLimit = 50;
-            if(playerCount == 5) missionTimeCountLimit = 40;
-            if(playerCount == 9) missionTimeCountLimit = 30;
-            if(playerCount == 13) missionTimeCountLimit = 20;
             Vector3 spawnPos = Vector3.up * 50f;
             Quaternion spawnRot = Quaternion.identity;
             if(runner.GameMode == GameMode.Single)
@@ -1383,17 +1397,12 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         }
         if (missionNumber == 2)
         {
-            if(playerCount == 1) missionTimeCountLimit = 30;
-            if(playerCount == 2) missionTimeCountLimit = 50;
-            if(playerCount == 5) missionTimeCountLimit = 30;
-            if(playerCount == 9) missionTimeCountLimit = 22;
-            if(playerCount == 13) missionTimeCountLimit = 15;
             playerControllers = FindObjectsByType<PlayerController>(FindObjectsSortMode.None).OrderBy(x => x.GetComponent<NetworkObject>().Id).ToArray();
             playerControllers[missionSubNumber].isMarked = true;
         }
     }
 
-    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    [Rpc(RpcSources.All, RpcTargets.All)]
     private void RPC_ClearMission()
     {
         CoolTimeImageParent.GetComponent<CoolTimeScript>().Reset();

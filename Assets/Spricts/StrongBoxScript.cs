@@ -32,6 +32,7 @@ public class StrongBoxScript : MonoBehaviour
         variableManager = ManagerObj.GetComponent<VariableManager>();
         action = false;
         isOpen = false;
+        GemObj.SetActive(true);
     }
 
     public void AddPlayer(GameObject player)
