@@ -97,15 +97,23 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
     [Networked]
     public int SyncedStageNumber { get; set; }
     GameObject Stage1Obj;
-    GameObject Stage2Obj;   
+    GameObject Stage2Obj;
+    StartFusion startFusion;
+    List<PlayerController> cachedControllers = new List<PlayerController>();
+    float playerListRefreshTimer = 0f;
+    int cachedStageNumber = -1;
+    bool gameEndReceived = false;
 
     public override void Spawned()
     {
+        runner = Runner;
+        startFusion = runner != null ? runner.GetComponent<StartFusion>() : null;
+
         upText.text = "";
         spawnTimer = 1f;
         hasSpawnedPlayer = false;
+        gameEndReceived = false;
 
-        // 部屋のStateAuthorityを持つ人がステージ番号を設定
         if (Object.HasStateAuthority)
         {
             StartFusion sf = Runner.GetComponent<StartFusion>();
@@ -115,6 +123,73 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                 SyncedStageNumber = sf.stageNumber;
                 Debug.Log("[ステージ同期] 初期設定: " + SyncedStageNumber);
             }
+        }
+    }
+
+    void RefreshPlayerObjects()
+    {
+        if (playerListRefreshTimer > 0f)
+        {
+            playerListRefreshTimer -= Time.deltaTime;
+            return;
+        }
+
+        playerListRefreshTimer = 0.5f;
+
+        PlayerController[] foundControllers =
+            FindObjectsByType<PlayerController>(FindObjectsSortMode.None);
+
+        cachedControllers.Clear();
+
+        foreach (PlayerController controller in foundControllers)
+        {
+            if (controller != null &&
+                controller.Object != null &&
+                controller.Object.IsValid)
+            {
+                cachedControllers.Add(controller);
+            }
+        }
+
+        cachedControllers.Sort((a, b) => a.Object.Id.CompareTo(b.Object.Id));
+
+        PlayerObj.Clear();
+
+        foreach (PlayerController controller in cachedControllers)
+        {
+            PlayerObj.Add(controller.gameObject);
+        }
+
+        if (startFusion != null && runner != null)
+        {
+            playerCount = startFusion.isCPUMode
+                ? startFusion.modePlayerCount
+                : runner.ActivePlayers.Count();
+        }
+    }
+
+    void RefreshStageObjects()
+    {
+        stageNumber = SyncedStageNumber;
+
+        if (stageNumber == 0)
+            stageNumber = 1;
+
+        if (cachedStageNumber == stageNumber)
+            return;
+
+        cachedStageNumber = stageNumber;
+
+        Stage1Obj.SetActive(stageNumber == 1);
+        Stage2Obj.SetActive(stageNumber == 2);
+
+        targetPrisonObj = prisonObj[stageNumber - 1].transform;
+
+        prisonObjects = new GameObject[targetPrisonObj.childCount];
+
+        for (int i = 0; i < targetPrisonObj.childCount; i++)
+        {
+            prisonObjects[i] = targetPrisonObj.GetChild(i).gameObject;
         }
     }
 
@@ -465,7 +540,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         GameObject skinObj = FindChildWithTag(targetPlayer.gameObject, "Skin");
         if (skinObj == null)
         {
-            Debug.Log("skinObj = null");
+            // Debug.Log("skinObj = null");
             return;   
         }
 
@@ -566,6 +641,13 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             {
                 // オンライン戦は最初に記憶したPlayerRefから取得
                 PlayerRef targetRef = nameSlotOwners[i];
+
+                // 切断されたプレイヤーのアイコンを非表示にする
+                if (!currentRunner.ActivePlayers.Contains(targetRef))
+                {
+                    imageObj[i].gameObject.SetActive(false);
+                    continue;
+                }
 
                 currentController = controllers.FirstOrDefault(p =>
                     p != null &&
@@ -729,100 +811,27 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             }
         }
 
-        StartFusion startFusion = FindFirstObjectByType<StartFusion>();
-
-        if (startFusion == null)
-        {
-            Debug.LogWarning("[Update停止] StartFusionが見つからない");
+        if (runner == null || !runner.IsRunning || startFusion == null)
             return;
-        }
-
-        NetworkRunner runner = FindFirstObjectByType<NetworkRunner>();
-
-        if (runner == null)
-        {
-            Debug.LogWarning("[Update停止] NetworkRunnerが見つからない");
-            return;
-        }
-
-        PlayerController[] controllers =
-            FindObjectsByType<PlayerController>(FindObjectsSortMode.None)
-            .Where(c => c != null &&
-                        c.Object != null &&
-                        c.Object.IsValid)
-            .OrderBy(c => c.Object.Id)
-            .ToArray();
-
-        PlayerObj.Clear();
-
-        foreach (PlayerController controller in controllers)
-        {
-            PlayerObj.Add(controller.gameObject);
-        }
-
-        if (startFusion.isCPUMode)
-        {
-            playerCount = startFusion.modePlayerCount;
-        }
-        else
-        {
-            playerCount = runner.ActivePlayers.Count();
-        }
 
         if (playerController == null)
         {
-            Debug.LogWarning("[Update停止] playerControllerがnull");
-            isWaitAndAssignRunning = false;
-            StartWaitAndAssign(runner.GetPlayerObject(runner.LocalPlayer), runner);
-            if(playerControllers == null) Debug.Log("全部null");
-            else Debug.Log(playerControllers.Length.ToString());
+            if (!isWaitAndAssignRunning)
+            {
+                StartWaitAndAssign(runner.GetPlayerObject(runner.LocalPlayer), runner);
+            }
             return;
         }
 
         if (!playerController.isActiveAndEnabled)
-        {
-            Debug.LogWarning("[Update停止] playerControllerが無効");
             return;
-        }
 
-        stageNumber = SyncedStageNumber;
-        
-        if(stageNumber == 0)
-        {
-            stageNumber = 1;
-        }
-        Stage1Obj.SetActive(true);
-        Stage2Obj.SetActive(true);
-        if(stageNumber == 1)
-        {
-            Stage2Obj.SetActive(false);
-        }
-        if(stageNumber == 2)
-        {
-            Stage1Obj.SetActive(false);
-        }
-        targetPrisonObj = prisonObj[stageNumber - 1].transform;
-        // Debug.Log(prisonObj[stageNumber - 1].transform.position.ToString());
+        RefreshPlayerObjects();
+        RefreshStageObjects();
 
-        prisonObjects = new GameObject[targetPrisonObj.childCount];
-        for (int i = 0; i < targetPrisonObj.childCount; i++)
-        {
-            prisonObjects[i] = targetPrisonObj.GetChild(i).gameObject;
-        }
-        
-        if(playerNameCanvas != null)
+        if (playerNameCanvas != null && playerNameCanvas.activeSelf)
         {
             playerNameCanvas.SetActive(false);
-            /*
-            if(playerController.roleNumber == 2)
-            {
-                playerNameCanvas.SetActive(false);
-            }
-            else
-            {
-                playerNameCanvas.SetActive(true);
-            }
-            */
         }
 
         if(!itemBool && FindChildWithTag(playerController.gameObject, "Skin") != null)
@@ -874,7 +883,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         }
 
         isSetName ++;
-        if(isSetName % 10 == 0) 
+        if(isSetName % 20 == 0) 
         {
             SetNameText();
         }
@@ -1027,15 +1036,6 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
                     }
                 }
             }
-            if(missionTimeCount >= missionTimeCountLimit && missionTimeCountLimit >= 1)
-            {
-                if (HasStateAuthority && !gameEndSent)
-                {
-                    gameEndSent = true;
-                    RPC_GameEnd(3);
-                }
-                return;
-            }
             if(clearMission)
             {
                 RPC_ClearMission();
@@ -1064,7 +1064,8 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         goalPlayerCount = 0;
         continuePlayerCount = 0;
         if (isLeaving) return;
-        if (!HasStateAuthority || gameEndSent) return; // StateAuthority以外では全体の勝利判定を行わない
+        if (runner.GameMode == GameMode.Shared && !runner.IsSharedModeMasterClient) return;
+        if (gameEndSent) return;
         for (int i = 0; i < playerCount; i ++)
         {
             playerControllers2 = PlayerObj[i].GetComponent<PlayerController>();
@@ -1098,6 +1099,15 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         else
         {
             playerCount2 = runner.ActivePlayers.Count();
+        }
+
+        if (missionNumber != -1 &&
+        missionTimeCount >= missionTimeCountLimit &&
+        missionTimeCountLimit >= 1)
+        {
+            gameEndSent = true;
+            RPC_GameEnd(3);
+            return;
         }
 
         // ② 泥棒が全員捕まった
@@ -1137,9 +1147,12 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
         }
     }
 
-    [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+    [Rpc(RpcSources.All, RpcTargets.All)]
     private void RPC_GameEnd(int endType)
     {
+        Debug.Log("ゲーム終了：" + gameEndReceived.ToString());
+        if (gameEndReceived) return;
+        gameEndReceived = true;
         if (isLeaving) return;
 
         // 勝利条件ごとに各プレイヤーの結果を決定
@@ -1168,7 +1181,7 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
 
             // だるまミッション
             case 3:
-                if(playerController.roleNumber == 1) isFinish = 0; // だるま勝利
+                if(playerController.roleNumber == 2) isFinish = 0; // だるま勝利
                 else isFinish = 1;
                 break;
         }
@@ -1187,7 +1200,15 @@ public class VariableManager : NetworkBehaviour, INetworkRunnerCallbacks
             }
         }
 
-        // 全員がルームを退出
+        upText.text = "ゲーム終了";
+
+        StartCoroutine(LeaveRoomDelayed());
+    }
+
+    IEnumerator LeaveRoomDelayed()
+    {
+        if(runner.IsSharedModeMasterClient) yield return new WaitForSeconds(3f);
+        else yield return new WaitForSeconds(1f);
         LeaveRoom();
     }
 

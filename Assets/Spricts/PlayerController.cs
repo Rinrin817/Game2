@@ -78,6 +78,7 @@ public class PlayerController : NetworkBehaviour
     [SerializeField] Transform[] prisonTransformArray;
     [SerializeField] Transform[] goalTransformArray;
     [SerializeField] GameObject randomObj;
+    private bool goalRequestSent;
 
     public string[] pushedKey = new string[12];
 
@@ -279,8 +280,10 @@ public class PlayerController : NetworkBehaviour
             }
         }
 
-        float currentYVelocity = rb.velocity.y;
+        if(roleNumber != 2 && canMove) rb.useGravity = true;
+        else rb.useGravity = false;
 
+        float currentYVelocity = rb.velocity.y;
         if (roleNumber == 2 || roleNumber == 3)
         {
             currentYVelocity = 0;
@@ -338,6 +341,23 @@ public class PlayerController : NetworkBehaviour
                 isStand = false;
             }
         }
+    }
+
+
+    public void RequestGoal()
+    {
+        if (goalRequestSent || roleNumber != 0) return;
+
+        goalRequestSent = true;
+        RPC_SetGoal();
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.StateAuthority)]
+    private void RPC_SetGoal()
+    {
+        if (roleNumber != 0) return;
+
+        roleNumber = 3;
     }
 
     void Update()
@@ -1316,8 +1336,8 @@ public class PlayerController : NetworkBehaviour
             if(roleNumber == 0 && playerController2.roleNumber == 1 && stateNumber == 0)
             {
                 stateNumber = 1;
-                string catcherName = playerController.NetworkPlayerName.ToString(); 
-                if(isEnemy) catcherName = variableManager.GetCPUName(playerController.gameObject);
+                string catcherName = NetworkPlayerName.ToString(); 
+                if(isEnemy) catcherName = variableManager.GetCPUName(gameObject);
                 string wasCatchedName = playerController2.NetworkPlayerName.ToString();
                 if(playerController2.isEnemy) wasCatchedName = variableManager.GetCPUName(playerController2.gameObject);
                 variableManager.catcher = catcherName + "が" + wasCatchedName + "を捕まえた！";
